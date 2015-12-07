@@ -1,10 +1,8 @@
 
 use std::env;
-use std::fs::{File, OpenOptions};
+use std::fs::{OpenOptions};
 use std::path::{Path, PathBuf};
 
-extern crate rustc_serialize;
-use rustc_serialize::json;
 
 pub struct TrelloBSTConfigPath {
     pub config_path: PathBuf

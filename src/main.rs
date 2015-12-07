@@ -23,7 +23,7 @@ fn parse_config_file(file: &mut File) -> Result<config::TrelloBSTAPIConfig, &'st
         Ok(_metadata)  => {
             metadata = _metadata;
         }
-        Err(err) => {
+        Err(_) => {
             return Err("Cannot gather metadata of the configuration file, configuration file won't be used...")
         }
     }
@@ -41,11 +41,11 @@ fn parse_config_file(file: &mut File) -> Result<config::TrelloBSTAPIConfig, &'st
     } else {
         let mut data: String = String::with_capacity(file_length +1);
         match file.read_to_string(&mut data) {
-            Ok(size) => {
+            Ok(_) => {
                 //TODO: better error checking
                 return Ok(json::decode(&data[..]).unwrap())
             },
-            Err(err) => {
+            Err(_) => {
                 return Err("Error while reading the configuration file, configuration file won't be used...")
             }
         }
