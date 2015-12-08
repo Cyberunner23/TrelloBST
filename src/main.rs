@@ -17,6 +17,7 @@ mod trello;
 
 
 fn get_config_path(is_using_custom_config: &mut bool, path_str: &str) -> Result<config::TrelloBSTConfigPath, &'static str> {
+
     if *is_using_custom_config {
         println!("Looking for the configuration file: {}", path_str);
         let path = Path::new(path_str);
@@ -113,7 +114,7 @@ fn main() {
     let mut config_path = config::TrelloBSTConfigPath::new();
 
     if is_using_config_file {
-        match get_config_path(&mut is_using_custom_config, matches.value_of("CONFIG").unwrap()) {
+        match get_config_path(&mut is_using_custom_config, matches.value_of("CONFIG").unwrap_or("")) {
             Ok(config) => {
                 config_path = config;
                 println!("Found.")
@@ -134,7 +135,9 @@ fn main() {
     let mut config = config::TrelloBSTAPIConfig::new();
 
     if is_using_config_file {
+
         println!("Parsing...");
+
         match parse_config(config_path) {
             Ok(_config) => {
                 config = _config;
@@ -146,8 +149,4 @@ fn main() {
             }
         }
     }
-
-
-
-
 }
