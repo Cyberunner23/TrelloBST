@@ -42,11 +42,11 @@ fn get_config_path(is_using_custom_config: &mut bool, path_str: &str) -> Result<
     }
 }
 
-fn parse_config(config_path: config::TrelloBSTConfigPath) -> Result<config::TrelloBSTAPIConfig, &'static str>{
+fn parse_config(config_path: &config::TrelloBSTConfigPath) -> Result<config::TrelloBSTAPIConfig, &'static str>{
     match File::open(config_path.config_path.as_path()) {
         Ok(file) => {
             let mut config_file = file;
-            match config::TrelloBSTAPIConfig::parse_from_file(&mut config_file) {
+            match config::TrelloBSTAPIConfig::from_file(&mut config_file) {
                 Ok(_config) => {
                     return Ok(_config)
                 }
@@ -135,10 +135,8 @@ fn main() {
     let mut config = config::TrelloBSTAPIConfig::new();
 
     if is_using_config_file {
-
         println!("Parsing...");
-
-        match parse_config(config_path) {
+        match parse_config(&config_path) {
             Ok(_config) => {
                 config = _config;
                 println!("Done.");
@@ -149,4 +147,19 @@ fn main() {
             }
         }
     }
+
+
+    ////////////////////////////////////////////////////////////
+    //                   Setup Trello API                     //
+    ////////////////////////////////////////////////////////////
+
+    trello::setup(&mut config);
+
+    if is_using_config_file{
+        match config::TrelloBSTAPIConfig::save_config(&config_path, &config) {
+            Ok(_)    => (),
+            Err(err) => println!("{}", err)
+        }
+    }
+
 }

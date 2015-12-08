@@ -1,7 +1,7 @@
 
 use std::env;
 use std::fs::{File, Metadata, OpenOptions};
-use std::io::Read;
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
 extern crate rustc_serialize;
@@ -71,7 +71,7 @@ impl TrelloBSTConfigPath {
 #[derive(RustcDecodable, RustcEncodable)]
 pub struct TrelloBSTAPIConfig {
     pub trello_api_key:      String,
-    pub trello_app_key:      String,
+    pub trello_app_token:    String,
     pub travis_access_token: String,
     pub appveyor_api_token:  String,
 }
@@ -81,13 +81,13 @@ impl TrelloBSTAPIConfig {
     pub fn new() -> TrelloBSTAPIConfig {
         TrelloBSTAPIConfig {
             trello_api_key:      "".to_string(),
-            trello_app_key:      "".to_string(),
+            trello_app_token:    "".to_string(),
             travis_access_token: "".to_string(),
             appveyor_api_token:  "".to_string(),
         }
     }
 
-    pub fn parse_from_file(file: &mut File) -> Result<TrelloBSTAPIConfig, &'static str>{
+    pub fn from_file(file: &mut File) -> Result<TrelloBSTAPIConfig, &'static str>{
         let metadata: Metadata;
         match file.metadata() {
             Ok(_metadata)  => {
@@ -113,6 +113,23 @@ impl TrelloBSTAPIConfig {
                 Err(_) => {
                     return Err("Error while reading the configuration file, configuration file won't be used...")
                 }
+            }
+        }
+    }
+
+    pub fn save_config(config_path: &TrelloBSTConfigPath, config: &TrelloBSTAPIConfig) -> Result<(), &'static str> {
+        match File::create(config_path.config_path.as_path()) {
+            Ok(file)  => {
+                //TODO: better error reporting
+                let     config_json = json::encode(&config).unwrap();
+                let mut config_file = file;
+                match config_file.write(&config_json.into_bytes()[..]) {
+                    Ok(_)  => Ok(()),
+                    Err(_) => Err("Error while saving the configuration file...")
+                }
+            }
+            Err(_) => {
+                Err("Cannot open configuration for saving...")
             }
         }
     }
