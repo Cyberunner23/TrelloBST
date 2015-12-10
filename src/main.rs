@@ -1,5 +1,7 @@
 
+
 use std::fs::File;
+use std::io::Read;
 use std::path::Path;
 use std::process::exit;
 
@@ -8,6 +10,10 @@ extern crate clap;
 use clap::{Arg, App};
 
 extern crate rustc_serialize;
+use rustc_serialize::json;
+
+extern crate hyper;
+use hyper::Client;
 
 
 mod appveyor;
@@ -153,7 +159,7 @@ fn main() {
     //                   Setup Trello API                     //
     ////////////////////////////////////////////////////////////
 
-    trello::setup(&mut config);
+    trello::setup_api(&mut config);
 
     if is_using_config_file{
         match config::TrelloBSTAPIConfig::save_config(&config_path, &config) {
@@ -162,4 +168,26 @@ fn main() {
         }
     }
 
+
+    ////////////////////////////////////////////////////////////
+    //                  Setup Trello Board                    //
+    ////////////////////////////////////////////////////////////
+
+    let mut board_info = trello::TrelloBoardInfo::new();
+
+    //trello::setup_board(&config, &mut board_info);
+
+    let     http_client = Client::new();
+    let mut res         = http_client.get("https://api.trello.com/1/members/me?fields=&boards=all&board_fields=name&key=0e190833c4db5fd7d3b0b26ae642d6fa&token=172cb3e72e91da9c43a0524f3bc4b8aaaf7091d3a47aeb8c4f464744560a188d").send().unwrap();
+
+    let mut body = String::new();
+    res.read_to_string(&mut body).unwrap();
+    println!("Response: {}\n\n\n", body);
+
+
+    let test: trello::members_me_boards_response = json::decode(&body).unwrap();
+
+
 }
+
+

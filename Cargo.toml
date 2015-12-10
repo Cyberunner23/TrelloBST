@@ -1,13 +1,24 @@
 [package]
-
 name        = "TrelloBST"
 version     = "0.0.1"
 authors     = ["Cyberunner23 <https://github.com/Cyberunner23>"]
 description = "Trello Build Status Tool, A tool for setting up a trello page receiving build statuses from Travis-CI and Appveyor."
+build       = "build.rs"
+
+[features]
+default = ["serde_codegen"]
+nightly = ["serde_macros"]
+
+[build-dependencies]
+serde_codegen = { version = "*", optional = true }
+syntex = "*"
 
 
 [dependencies]
 clap            = "1.5.2"
 hyper           = "0.7.0"
 openssl         = "0.7.1"
-rustc-serialize = "0.3.16"
+rustc-serialize = "*"
+serde = "*"
+serde_json = "*"
+serde_macros = { version = "*", optional = true }
