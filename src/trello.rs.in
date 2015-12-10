@@ -1,10 +1,6 @@
 use std::collections::BTreeMap;
 use std::io;
 
-extern crate rustc_serialize;
-use rustc_serialize::json;
-
-
 use config;
 
 
@@ -52,13 +48,13 @@ pub fn setup_api(config: &mut config::TrelloBSTAPIConfig) {
 }
 
 
-#[derive(RustcDecodable, RustcEncodable)]
+#[derive(Serialize)]
 pub struct board_info {
     pub name: String,
     pub id:   String
 }
 
-#[derive(RustcDecodable, RustcEncodable)]
+#[derive(Serialize)]
 pub struct members_me_boards_response {
     pub id:          String,
     pub boards: Vec<board_info>,

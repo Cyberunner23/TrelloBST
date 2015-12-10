@@ -9,9 +9,6 @@ use std::process::exit;
 extern crate clap;
 use clap::{Arg, App};
 
-extern crate rustc_serialize;
-use rustc_serialize::json;
-
 extern crate hyper;
 use hyper::Client;
 
@@ -185,7 +182,7 @@ fn main() {
     println!("Response: {}\n\n\n", body);
 
 
-    let test: trello::members_me_boards_response = json::decode(&body).unwrap();
+    //let test: trello::members_me_boards_response = serde_json::to_string(&body).unwrap();
 
 
 }

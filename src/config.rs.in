@@ -4,9 +4,6 @@ use std::fs::{File, Metadata, OpenOptions};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
-extern crate rustc_serialize;
-use rustc_serialize::json;
-
 
 pub struct TrelloBSTConfigPath {
     pub config_path: PathBuf
@@ -68,7 +65,7 @@ impl TrelloBSTConfigPath {
 }
 
 
-#[derive(RustcDecodable, RustcEncodable)]
+#[derive(Serialize, Deserialize)]
 pub struct TrelloBSTAPIConfig {
     pub trello_api_key:      String,
     pub trello_app_token:    String,
@@ -108,7 +105,7 @@ impl TrelloBSTAPIConfig {
             match file.read_to_string(&mut data) {
                 Ok(_) => {
                     //TODO: better error checking
-                    return Ok(json::decode(&data[..]).unwrap())
+                    return Ok(serdejson::from_str(&data[..]).unwrap())
                 },
                 Err(_) => {
                     return Err("Error while reading the configuration file, configuration file won't be used...")
@@ -121,7 +118,7 @@ impl TrelloBSTAPIConfig {
         match File::create(config_path.config_path.as_path()) {
             Ok(file)  => {
                 //TODO: better error reporting
-                let     config_json = json::encode(&config).unwrap();
+                let     config_json = serde_json::to_string(&config).unwrap();
                 let mut config_file = file;
                 match config_file.write(&config_json.into_bytes()[..]) {
                     Ok(_)  => Ok(()),
