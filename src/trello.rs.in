@@ -1,18 +1,47 @@
-use std::collections::BTreeMap;
+use std::error::Error;
 use std::io;
+use std::io::Read;
 
 use config;
 
+extern crate hyper;
+use hyper::Client;
+use hyper::client::IntoUrl;
+use hyper::client::response::Response;
+use hyper::Url;
 
-pub struct TrelloBoardInfo{
+
+////////////////////////////////////////////////////////////
+//                        Structs                         //
+////////////////////////////////////////////////////////////
+
+pub struct TrelloBoardInfo {
     pub board_id:      String,
     pub list_id:       String,
     pub build_pass_id: String,
     pub build_fail_id: String,
 }
 
-impl TrelloBoardInfo {
 
+#[derive(Deserialize)]
+pub struct board_name_id {
+    pub name: String,
+    pub id:   String
+}
+
+//response to the /1/members/me/boards api call.
+#[derive(Deserialize)]
+pub struct members_me_boards_response {
+    pub id:     String,
+    pub boards: Vec<board_name_id>,
+}
+
+
+////////////////////////////////////////////////////////////
+//                         Impls                          //
+////////////////////////////////////////////////////////////
+
+impl TrelloBoardInfo {
     pub fn new() -> TrelloBoardInfo {
         TrelloBoardInfo {
             board_id:      "".to_string(),
@@ -23,6 +52,20 @@ impl TrelloBoardInfo {
     }
 }
 
+
+impl members_me_boards_response {
+    pub fn new() -> members_me_boards_response {
+        members_me_boards_response {
+            id:     "".to_string(),
+            boards: Vec::new(),
+        }
+    }
+}
+
+
+////////////////////////////////////////////////////////////
+//                       Functions                        //
+////////////////////////////////////////////////////////////
 
 pub fn setup_api(config: &mut config::TrelloBSTAPIConfig) {
 
@@ -48,24 +91,70 @@ pub fn setup_api(config: &mut config::TrelloBSTAPIConfig) {
 }
 
 
-#[derive(Serialize)]
-pub struct board_info {
-    pub name: String,
-    pub id:   String
+pub fn acquire_board_list(config: &config::TrelloBSTAPIConfig, board_list: &mut members_me_boards_response) -> Result<(), &'static str>{
+
+    let     http_client   = Client::new();
+    let     api_call      = format!("https://api.trello.com/1/members/me?fields=&boards=all&board_fields=name&key={}&token={}", config.trello_api_key, config.trello_app_token);
+    let mut response:       Response;
+    let mut response_body = String::new();
+    let mut api_call_url:   Url;
+
+    match api_call.into_url() {
+        Ok(url) => api_call_url = url,
+        Err(_)  => return Err("Error while parsing API call url.")
+    }
+
+    match http_client.get(api_call_url).send() {
+        Ok(res) => response = res,
+        Err(_)  => return Err("Error calling the API.")
+    }
+
+    match response.read_to_string(&mut response_body){
+        Ok(_)    => (),
+        Err(err) => return Err("Error converting the API response to a string.")
+    }
+
+    if response_body == "invalid key" {
+        return Err("The API key is invalid.");
+    }
+
+    if response_body == "invalid token" {
+        return Err("The app token is invalid.");
+    }
+
+    let local_board_list: members_me_boards_response;
+    match serde_json::from_str(&response_body){
+        Ok(_board_list) => local_board_list = _board_list,
+        Err(err)        => return Err("Error parsing the response.")
+    }
+
+
+    board_list.id     = local_board_list.id;
+    board_list.boards = local_board_list.boards;
+
+    Ok(())
 }
 
-#[derive(Serialize)]
-pub struct members_me_boards_response {
-    pub id:          String,
-    pub boards: Vec<board_info>,
-}
+pub fn setup_board(config: &config::TrelloBSTAPIConfig, board_list: &mut members_me_boards_response, board_info: &mut TrelloBoardInfo) -> Result<(), &'static str> {
 
+    //TODO: better error checking: json deserialize, format, get request
+    //get board list
+    let http_client = Client::new();
+    let api_call    = format!("https://api.trello.com/1/members/me?fields=&boards=all&board_fields=name&key={}&token={}", config.trello_api_key, config.trello_app_token);
 
+    let mut api_call_url: Url;
+    match api_call.into_url() {
+        Ok(url)  => api_call_url = url,
+        Err(_)   => return Err("Error while parsing api call url.")
+    }
 
+    let mut res  = http_client.get(api_call_url).send().unwrap();
+    let mut body = String::new();
 
+    res.read_to_string(&mut body).unwrap();
+    let board_list: members_me_boards_response = serde_json::from_str(&body).unwrap();
 
-pub fn setup_board(config: config::TrelloBSTAPIConfig, board_info: &mut TrelloBoardInfo) {
-
+    Ok(())
 }
 
 

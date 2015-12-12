@@ -105,7 +105,7 @@ impl TrelloBSTAPIConfig {
             match file.read_to_string(&mut data) {
                 Ok(_) => {
                     //TODO: better error checking
-                    return Ok(serdejson::from_str(&data[..]).unwrap())
+                    return Ok(serde_json::from_str(&data[..]).unwrap())
                 },
                 Err(_) => {
                     return Err("Error while reading the configuration file, configuration file won't be used...")

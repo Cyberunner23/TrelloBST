@@ -1,7 +1,7 @@
 
 
 use std::fs::File;
-use std::io::Read;
+use std::io::{self, Read, Write};
 use std::path::Path;
 use std::process::exit;
 
@@ -12,6 +12,11 @@ use clap::{Arg, App};
 extern crate hyper;
 use hyper::Client;
 
+extern crate serde;
+extern crate serde_json;
+
+extern crate term;
+
 
 mod appveyor;
 mod config;
@@ -19,31 +24,69 @@ mod travis_ci;
 mod trello;
 
 
-fn get_config_path(is_using_custom_config: &mut bool, path_str: &str) -> Result<config::TrelloBSTConfigPath, &'static str> {
-
-    if *is_using_custom_config {
-        println!("Looking for the configuration file: {}", path_str);
-        let path = Path::new(path_str);
-        match config::TrelloBSTConfigPath::try_custom_config_path(path) {
-            Ok(_config) => {
-                return Ok(_config)
-            },
-            Err(c) => {
-                return Err(c)
-            },
-        };
-    } else {
-        println!("Looking for the configuration file in default location...");
-        match config::TrelloBSTConfigPath::try_default_config_path() {
-            Ok(_config) => {
-                return Ok(_config)
-            },
-            Err(c) => {
-                return Err(c)
-            },
-        };
+macro_rules! match_to_none {
+    ($match_expr:expr) => {
+        match $match_expr {
+            Ok(_)  => (),
+            Err(_) => (),
+        }
     }
 }
+
+macro_rules! status_print {
+    ($term:expr, $($msg:tt)*) => {
+        match_to_none!($term.write_fmt(format_args!("[ ] {}", format_args!($($msg)*))));
+    }
+}
+
+macro_rules! status_print_success {
+    ($term:expr, $($msg:tt)*) => {
+        match_to_none!($term.carriage_return());
+        match_to_none!($term.write_fmt(format_args!("[")));
+        match_to_none!($term.fg(term::color::GREEN));
+        match_to_none!($term.write_fmt(format_args!("✓")));
+        match_to_none!($term.reset());
+        match_to_none!($term.write_fmt(format_args!("] {}\n", format_args!($($msg)*))));
+    }
+}
+
+macro_rules! status_print_error {
+    ($term:expr, $($msg:tt)*) => {
+        match_to_none!($term.carriage_return());
+        match_to_none!($term.write_fmt(format_args!("[")));
+        match_to_none!($term.fg(term::color::RED));
+        match_to_none!($term.write_fmt(format_args!("✗")));
+        match_to_none!($term.reset());
+        match_to_none!($term.write_fmt(format_args!("] {}\n", format_args!($($msg)*))));
+    }
+}
+
+
+//fn get_config_path(is_using_custom_config: &mut bool, path_str: &str) -> Result<config::TrelloBSTConfigPath, &'static str> {
+//
+//    if is_using_custom_config {
+//        println!("Looking for the configuration file: {}", path_str);
+//        let path = Path::new(path_str);
+//        match config::TrelloBSTConfigPath::try_custom_config_path(path) {
+//            Ok(_config) => {
+//                return Ok(_config)
+//            },
+//            Err(c)      => {
+//                return Err(c)
+//            },
+//        };
+//    } else {
+//        println!("Looking for the configuration file in default location...");
+//        match config::TrelloBSTConfigPath::try_default_config_path() {
+//            Ok(_config) => {
+//                return Ok(_config)
+//            },
+//            Err(c)      => {
+//                return Err(c)
+//            },
+//        };
+//    }
+//}
 
 fn parse_config(config_path: &config::TrelloBSTConfigPath) -> Result<config::TrelloBSTAPIConfig, &'static str>{
     match File::open(config_path.config_path.as_path()) {
@@ -53,7 +96,7 @@ fn parse_config(config_path: &config::TrelloBSTConfigPath) -> Result<config::Tre
                 Ok(_config) => {
                     return Ok(_config)
                 }
-                Err(err)   => {
+                Err(err)    => {
                     return Err(err)
                 }
             }
@@ -67,11 +110,14 @@ fn parse_config(config_path: &config::TrelloBSTConfigPath) -> Result<config::Tre
 
 fn main() {
 
-    let trellobst_version = "0.0.1";
+    let     trellobst_version = "0.0.1";
+    let mut term              = term::stdout().unwrap();
 
-    println!("|----------------------------------------------------------|");
-    println!("|-------- Welcome to the Trello Build Status Tool. --------|");
-    println!("|----------------------------------------------------------|");
+    term.fg(term::color::GREEN).unwrap();
+    writeln!(term, "╔══════════════════════════════════════════════════════════╗").unwrap();
+    writeln!(term, "║         Welcome to the Trello Build Status Tool.         ║").unwrap();
+    writeln!(term, "╚══════════════════════════════════════════════════════════╝").unwrap();
+    term.reset().unwrap();
 
 
     ////////////////////////////////////////////////////////////
@@ -96,7 +142,9 @@ fn main() {
         .get_matches();
 
     if matches.is_present("CONFIG") && matches.is_present("NO-CONFIG") {
-        println!("Error: --config (-c) and --no-config (-n) cannot be used at the same time.");
+        term.fg(term::color::RED).unwrap();
+        writeln!(term, "Error: --config (-c) and --no-config (-n) cannot be used at the same time.");
+        term.reset().unwrap();
         exit(-1);
     }
 
@@ -116,18 +164,40 @@ fn main() {
 
     let mut config_path = config::TrelloBSTConfigPath::new();
 
-    if is_using_config_file {
-        match get_config_path(&mut is_using_custom_config, matches.value_of("CONFIG").unwrap_or("")) {
-            Ok(config) => {
-                config_path = config;
-                println!("Found.")
-            }
-            Err(err)=>{
-                println!("An error occurred: {}", err);
-                println!("Configuration file won't be used...");
+    if is_using_custom_config {
+        let path_str = matches.value_of("CONFIG").unwrap_or("");
+        status_print!(term, "Looking for the configuration file: {}", path_str);
+        let path = Path::new(path_str);
+        match config::TrelloBSTConfigPath::try_custom_config_path(path) {
+            Ok(_config) => {
+                config_path = _config;
+                status_print_success!(term, "Looking for the configuration file: {}", path_str);
+            },
+            Err(err)    => {
                 is_using_config_file = false;
-            }
-        }
+                status_print_error!(term, "Looking for the configuration file: {}", path_str);
+                term.fg(term::color::RED).unwrap();
+                writeln!(term, "An error occurred: {}", err);
+                writeln!(term, "Configuration file won't be used...");
+                term.reset().unwrap();
+            },
+        };
+    } else {
+        status_print!(term, "Looking for the configuration file in default location...");
+        match config::TrelloBSTConfigPath::try_default_config_path() {
+            Ok(_config) => {
+                status_print_success!(term, "Looking for the configuration file in default location...");
+                config_path = _config;
+            },
+            Err(err)    => {
+                is_using_config_file = false;
+                status_print_error!(term, "Looking for the configuration file in default location...");
+                term.fg(term::color::RED).unwrap();
+                writeln!(term, "An error occurred: {}", err);
+                writeln!(term, "Configuration file won't be used...");
+                term.reset().unwrap();
+            },
+        };
     }
 
 
@@ -138,14 +208,18 @@ fn main() {
     let mut config = config::TrelloBSTAPIConfig::new();
 
     if is_using_config_file {
-        println!("Parsing...");
+        status_print!(term, "Parsing the configuration file.");
         match parse_config(&config_path) {
             Ok(_config) => {
                 config = _config;
-                println!("Done.");
+                status_print_success!(term, "Parsing the configuration file.");
             }
-            Err(err)   => {
-                println!("{}", err);
+            Err(err)    => {
+                status_print_error!(term, "Parsing the configuration file.");
+                term.fg(term::color::RED).unwrap();
+                writeln!(term, "An error occurred: {}", err);
+                writeln!(term, "Configuration file won't be used...");
+                term.reset().unwrap();
                 is_using_config_file = false;
             }
         }
@@ -161,7 +235,11 @@ fn main() {
     if is_using_config_file{
         match config::TrelloBSTAPIConfig::save_config(&config_path, &config) {
             Ok(_)    => (),
-            Err(err) => println!("{}", err)
+            Err(err) => {
+                term.fg(term::color::RED).unwrap();
+                writeln!(term, "{}", err);
+                term.reset().unwrap();
+            }
         }
     }
 
@@ -171,18 +249,33 @@ fn main() {
     ////////////////////////////////////////////////////////////
 
     let mut board_info = trello::TrelloBoardInfo::new();
+    let mut board_list = trello::members_me_boards_response::new();
 
-    //trello::setup_board(&config, &mut board_info);
+    status_print!(term, "Acquiring board list from Trello.");
+    match trello::acquire_board_list(&config, &mut board_list) {
+        Ok(ok)   => {
+            status_print_success!(term, "Acquiring board list from Trello.");
+        },
+        Err(err) => {
+            status_print_error!(term, "Acquiring board list from Trello.");
+            panic!(format!("An error occurred while communicating with Trello: {}", err));
+        },
+    }
 
-    let     http_client = Client::new();
-    let mut res         = http_client.get("https://api.trello.com/1/members/me?fields=&boards=all&board_fields=name&key=0e190833c4db5fd7d3b0b26ae642d6fa&token=172cb3e72e91da9c43a0524f3bc4b8aaaf7091d3a47aeb8c4f464744560a188d").send().unwrap();
+    trello::setup_board(&config, &mut board_list, &mut board_info);
 
-    let mut body = String::new();
-    res.read_to_string(&mut body).unwrap();
-    println!("Response: {}\n\n\n", body);
-
-
-    //let test: trello::members_me_boards_response = serde_json::to_string(&body).unwrap();
+    //let     http_client = Client::new();
+    //let mut res         = http_client.get("https://api.trello.com/1/members/me?fields=&boards=all&board_fields=name&key=0e190833c4db5fd7d3b0b26ae642d6fa&token=172cb3e72e91da9c43a0524f3bc4b8aaaf7091d3a47aeb8c4f464744560a188d").send().unwrap();
+//
+    //let mut body = String::new();
+    //res.read_to_string(&mut body).unwrap();
+    //println!("Response: {}\n\n\n", body);
+//
+//
+    //let test: trello::members_me_boards_response = serde_json::from_str(&body).unwrap();
+//
+    //println!("{}", test.boards[0].name);
+    //println!("{}", test.boards[0].id);
 
 
 }
