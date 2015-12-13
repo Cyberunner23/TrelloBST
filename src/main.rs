@@ -34,7 +34,6 @@ extern crate clap;
 use clap::{Arg, App};
 
 extern crate hyper;
-use hyper::Client;
 
 extern crate serde;
 extern crate serde_json;
@@ -60,6 +59,7 @@ macro_rules! match_to_none {
 macro_rules! status_print {
     ($term:expr, $($msg:tt)*) => {
         match_to_none!($term.write_fmt(format_args!("[ ] {}", format_args!($($msg)*))));
+        match_to_none!($term.flush());
     }
 }
 
@@ -71,6 +71,7 @@ macro_rules! status_print_success {
         match_to_none!($term.write_fmt(format_args!("✓")));
         match_to_none!($term.reset());
         match_to_none!($term.write_fmt(format_args!("] {}\n", format_args!($($msg)*))));
+        match_to_none!($term.flush());
     }
 }
 
@@ -82,6 +83,7 @@ macro_rules! status_print_error {
         match_to_none!($term.write_fmt(format_args!("✗")));
         match_to_none!($term.reset());
         match_to_none!($term.write_fmt(format_args!("] {}\n", format_args!($($msg)*))));
+        match_to_none!($term.flush());
     }
 }
 
@@ -141,7 +143,7 @@ fn main() {
 
     if matches.is_present("CONFIG") && matches.is_present("NO-CONFIG") {
         term.fg(term::color::RED).unwrap();
-        writeln!(term, "Error: --config (-c) and --no-config (-n) cannot be used at the same time.");
+        match_to_none!(writeln!(term, "Error: --config (-c) and --no-config (-n) cannot be used at the same time."));
         term.reset().unwrap();
         exit(-1);
     }
@@ -175,8 +177,8 @@ fn main() {
                 is_using_config_file = false;
                 status_print_error!(term, "Looking for the configuration file: {}", path_str);
                 term.fg(term::color::RED).unwrap();
-                writeln!(term, "An error occurred: {}", err);
-                writeln!(term, "Configuration file won't be used...");
+                match_to_none!(writeln!(term, "An error occurred: {}", err));
+                match_to_none!(writeln!(term, "Configuration file won't be used..."));
                 term.reset().unwrap();
             },
         };
@@ -191,8 +193,8 @@ fn main() {
                 is_using_config_file = false;
                 status_print_error!(term, "Looking for the configuration file in default location...");
                 term.fg(term::color::RED).unwrap();
-                writeln!(term, "An error occurred: {}", err);
-                writeln!(term, "Configuration file won't be used...");
+                match_to_none!(writeln!(term, "An error occurred: {}", err));
+                match_to_none!(writeln!(term, "Configuration file won't be used..."));
                 term.reset().unwrap();
             },
         };
@@ -215,8 +217,8 @@ fn main() {
             Err(err)    => {
                 status_print_error!(term, "Parsing the configuration file.");
                 term.fg(term::color::RED).unwrap();
-                writeln!(term, "An error occurred: {}", err);
-                writeln!(term, "Configuration file won't be used...");
+                match_to_none!(writeln!(term, "An error occurred: {}", err));
+                match_to_none!(writeln!(term, "Configuration file won't be used..."));
                 term.reset().unwrap();
                 is_using_config_file = false;
             }
@@ -235,7 +237,7 @@ fn main() {
             Ok(_)    => (),
             Err(err) => {
                 term.fg(term::color::RED).unwrap();
-                writeln!(term, "{}", err);
+                match_to_none!(writeln!(term, "{}", err));
                 term.reset().unwrap();
             }
         }
@@ -247,11 +249,11 @@ fn main() {
     ////////////////////////////////////////////////////////////
 
     let mut board_info = trello::TrelloBoardInfo::new();
-    let mut board_list = trello::members_me_boards_response::new();
+    let mut board_list = trello::MembersMeBoardsResponse::new();
 
     status_print!(term, "Acquiring board list from Trello.");
     match trello::acquire_board_list(&config, &mut board_list) {
-        Ok(ok)   => {
+        Ok(_)    => {
             status_print_success!(term, "Acquiring board list from Trello.");
         },
         Err(err) => {
@@ -269,6 +271,69 @@ fn main() {
     term.fg(term::color::GREEN).unwrap();
     println!("[{}] Create a new board.", counter);
     term.reset().unwrap();
+
+    let mut option_str = String::new();
+    let mut option:u64 = 0;
+    loop {
+        print!("Please enter an option: ");
+        match_to_none!(term.flush());
+        match io::stdin().read_line(&mut option_str) {
+            Ok(_)  => {
+                option_str = option_str.trim_matches('\n').to_string();
+                match option_str.parse::<u64>(){
+                    Ok(_option) => {
+                        option = _option;
+                    },
+                    Err(_)      => {
+                        option_str = "".to_string();
+                        term.fg(term::color::RED).unwrap();
+                        match_to_none!(writeln!(term, "Error while parsing the input."));
+                        term.reset().unwrap();
+                    }
+                }
+            },
+            Err(_) => {panic!("Error while reading the input.");}
+        }
+
+        if option <= counter && option > 0 {
+            break;
+        }else {
+            option_str = "".to_string();
+            term.fg(term::color::RED).unwrap();
+            match_to_none!(writeln!(term, "Please enter a valid option."));
+            term.reset().unwrap();
+        }
+    }
+
+    let mut is_board_created = false;
+    if option == counter {
+        match trello::create_board_and_list(&mut term, &config, &mut board_info){
+            Ok(_)    => is_board_created = true,
+            Err(err) => {
+                term.fg(term::color::RED).unwrap();
+                writeln!(term, "An error occured: {}", err);
+                term.reset().unwrap();
+            }
+        }
+    }
+
+    status_print!(term, "Acquiring board's lists list from Trello.");
+    match trello::acquire_board_lists_list(&config, &mut board_info) {
+        Ok(_)    => {
+            status_print_success!(term, "Acquiring board's lists list from Trello.");
+        },
+        Err(err) => {
+            status_print_error!(term, "Acquiring board's lists list from Trello.");
+            panic!(format!("An error occurred while communicating with Trello: {}", err));
+        },
+    }
+
+    //TODO: List board's lists
+    //TODO: select list
+    //TODO: create if needed (create if empty)
+
+    //let     api_call      = format!("https://trello.com/1/boards?name=testBoard&defaultLists=false&key=0e190833c4db5fd7d3b0b26ae642d6fa&token=14ebb03115f0a495e2414778676753ae5e935d0c0dfa4a5efb3c689b59f811e0");
+
 
 
 }
