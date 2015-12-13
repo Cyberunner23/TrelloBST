@@ -1,3 +1,27 @@
+/*
+    Copyright (c) 2015, Alex Frappier Lachapelle
+    All rights reserved.
+
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions are met:
+
+    1. Redistributions of source code must retain the above copyright notice, this
+       list of conditions and the following disclaimer.
+    2. Redistributions in binary form must reproduce the above copyright notice,
+       this list of conditions and the following disclaimer in the documentation
+       and/or other materials provided with the distribution.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+    ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+    WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+    DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+    ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+    (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+    LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+    ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+    (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
 
 
 use std::fs::File;
@@ -61,32 +85,6 @@ macro_rules! status_print_error {
     }
 }
 
-
-//fn get_config_path(is_using_custom_config: &mut bool, path_str: &str) -> Result<config::TrelloBSTConfigPath, &'static str> {
-//
-//    if is_using_custom_config {
-//        println!("Looking for the configuration file: {}", path_str);
-//        let path = Path::new(path_str);
-//        match config::TrelloBSTConfigPath::try_custom_config_path(path) {
-//            Ok(_config) => {
-//                return Ok(_config)
-//            },
-//            Err(c)      => {
-//                return Err(c)
-//            },
-//        };
-//    } else {
-//        println!("Looking for the configuration file in default location...");
-//        match config::TrelloBSTConfigPath::try_default_config_path() {
-//            Ok(_config) => {
-//                return Ok(_config)
-//            },
-//            Err(c)      => {
-//                return Err(c)
-//            },
-//        };
-//    }
-//}
 
 fn parse_config(config_path: &config::TrelloBSTConfigPath) -> Result<config::TrelloBSTAPIConfig, &'static str>{
     match File::open(config_path.config_path.as_path()) {
@@ -262,20 +260,15 @@ fn main() {
         },
     }
 
-    trello::setup_board(&config, &mut board_list, &mut board_info);
-
-    //let     http_client = Client::new();
-    //let mut res         = http_client.get("https://api.trello.com/1/members/me?fields=&boards=all&board_fields=name&key=0e190833c4db5fd7d3b0b26ae642d6fa&token=172cb3e72e91da9c43a0524f3bc4b8aaaf7091d3a47aeb8c4f464744560a188d").send().unwrap();
-//
-    //let mut body = String::new();
-    //res.read_to_string(&mut body).unwrap();
-    //println!("Response: {}\n\n\n", body);
-//
-//
-    //let test: trello::members_me_boards_response = serde_json::from_str(&body).unwrap();
-//
-    //println!("{}", test.boards[0].name);
-    //println!("{}", test.boards[0].id);
+    println!("Which board do you want to setup?");
+    let mut counter = 1;
+    for i in 0..board_list.boards.len() {
+        println!("[{}] {}", i + 1, board_list.boards[i].name);
+        counter += 1;
+    }
+    term.fg(term::color::GREEN).unwrap();
+    println!("[{}] Create a new board.", counter);
+    term.reset().unwrap();
 
 
 }
