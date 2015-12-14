@@ -38,6 +38,7 @@ use hyper::client::response::Response;
 use hyper::Url;
 
 use serde_json::Value;
+use serde_json::error::ErrorCode;
 
 extern crate term;
 
@@ -91,10 +92,10 @@ pub struct ListInfo {
 //response to the /1/boards api call.
 #[derive(Deserialize)]
 pub struct BoardsResponse {
-    pub id:         String,
-    pub data:       String,
-    pub desc:       String,
-    pub lists_list: Vec<ListInfo>
+    pub id:    String,
+    pub name:  String,
+    pub desc:  String,
+    pub lists: Vec<ListInfo>
 }
 
 
@@ -119,6 +120,18 @@ impl MembersMeBoardsResponse{
         MembersMeBoardsResponse{
             id:     "".to_string(),
             boards: Vec::new(),
+        }
+    }
+}
+
+
+impl BoardsResponse {
+    pub fn new() -> BoardsResponse{
+        BoardsResponse {
+            id:    "".to_string(),
+            name:  "".to_string(),
+            desc:  "".to_string(),
+            lists: Vec::new(),
         }
     }
 }
@@ -201,7 +214,7 @@ pub fn create_board_and_list(term: &mut Box<term::StdoutTerminal>, config: &conf
     let mut board_name = String::new();
     loop {
         print!("Please enter a name for the new board: ");
-        term.flush();
+        match_to_none!(term.flush());
         match io::stdin().read_line(&mut board_name) {
             Ok(_)  => {
                 board_name = board_name.trim_matches('\n').to_string();
@@ -227,7 +240,7 @@ pub fn create_board_and_list(term: &mut Box<term::StdoutTerminal>, config: &conf
         Err(_)  => return Err("Error while parsing API call url.")
     }
 
-    match http_client.get(api_call_url).send() {
+    match http_client.post(api_call_url).send() {
         Ok(res) => response = res,
         Err(_)  => return Err("Error calling the API.")
     }
@@ -253,66 +266,17 @@ pub fn create_board_and_list(term: &mut Box<term::StdoutTerminal>, config: &conf
 
     board_info.board_id = data.as_object().unwrap().get("id").unwrap().as_string().unwrap().to_string();
 
-
-    //Create list
-    let mut list_name = String::new();
-    loop {
-        print!("Please enter a name for the list which will contain the build statuses: ");
-        term.flush();
-        match io::stdin().read_line(&mut list_name) {
-            Ok(_)  => {
-                list_name = list_name.trim_matches('\n').to_string();
-                break;
-            },
-            Err(_) => {
-                term.fg(term::color::RED).unwrap();
-                writeln!(term, "Error while reading the input.");
-                writeln!(term, "Please enter a valid name.");
-                term.reset().unwrap();
-            }
-        }
-    }
-
-    api_call = format!("https://trello.com/1/lists?name={}&idBoard={}&defaultLists=false&key={}&token={}", board_name, board_info.board_id, config.trello_api_key, config.trello_app_token);
-
-    match api_call.into_url() {
-        Ok(url) => api_call_url = url,
-        Err(_)  => return Err("Error while parsing API call url.")
-    }
-
-    match http_client.get(api_call_url).send() {
-        Ok(res) => response = res,
-        Err(_)  => return Err("Error calling the API.")
-    }
-
-    match response.read_to_string(&mut response_body){
-        Ok(_)  => (),
-        Err(_) => return Err("Error converting the API response to a string.")
-    }
-
-    if response_body == "invalid key" {
-        return Err("Error, the API key is invalid.");
-    }
-
-    if response_body == "invalid token" {
-        return Err("The app token is invalid.");
-    }
-
-    let data: Value;
-    match serde_json::from_str(&response_body){
-        Ok(_data) => data = _data,
-        Err(_)    => return Err("Error parsing the response.")
-    }
+    create_list(term, &config, board_info);
 
     board_info.list_id = data.as_object().unwrap().get("id").unwrap().as_string().unwrap().to_string();
 
     Ok(())
 }
 
-pub fn acquire_board_lists_list(config: &config::TrelloBSTAPIConfig, board_info: &mut TrelloBoardInfo) -> Result<(), &'static str>{
+pub fn acquire_board_lists_list(config: &config::TrelloBSTAPIConfig, board_info: &TrelloBoardInfo, board_lists_list: &mut BoardsResponse) -> Result<(), &'static str>{
 
     let     http_client   = Client::new();
-    let     api_call      = format!("https://api.trello.com/1/boards/{}?lists=open&list_fields=name&key={}&token={}", config.trello_api_key, config.trello_app_token);
+    let     api_call      = format!("https://api.trello.com/1/boards/{}?lists=open&list_fields=name&fields=name,desc&key={}&token={}",board_info.board_id, config.trello_api_key, config.trello_app_token);
     let mut response:       Response;
     let mut response_body = String::new();
     let     api_call_url:   Url;
@@ -340,23 +304,81 @@ pub fn acquire_board_lists_list(config: &config::TrelloBSTAPIConfig, board_info:
         return Err("The app token is invalid.");
     }
 
-    let local_board_list: MembersMeBoardsResponse;
+    let local_board_lists_list: BoardsResponse;
     match serde_json::from_str(&response_body){
-        Ok(_board_list) => local_board_list = _board_list,
-        Err(_)          => return Err("Error parsing the response.")
+        Ok(_board_lists_list) => local_board_lists_list = _board_lists_list,
+        Err(err)              => return Err("Error parsing the response.",)
     }
 
-
-    board_list.id     = local_board_list.id;
-    board_list.boards = local_board_list.boards;
+    board_lists_list.id    = local_board_lists_list.id;
+    board_lists_list.name  = local_board_lists_list.name;
+    board_lists_list.desc  = local_board_lists_list.desc;
+    board_lists_list.lists = local_board_lists_list.lists;
 
     Ok(())
 
-    //TODO: Finish this.
 }
 
-pub fn select_lists(board_id: String, ) {
+pub fn create_list(term: &mut Box<term::StdoutTerminal>, config: &config::TrelloBSTAPIConfig, board_info: &mut TrelloBoardInfo) -> Result<(), &'static str> {
 
+    let     http_client   = Client::new();
+    let mut response:       Response;
+    let mut response_body = String::new();
+    let     api_call_url:   Url;
+
+    let mut list_name = String::new();
+
+    loop {
+        print!("Please enter a name for the list which will contain the build statuses: ");
+        match_to_none!(term.flush());
+        match io::stdin().read_line(&mut list_name) {
+            Ok(_)  => {
+                list_name = list_name.trim_matches('\n').to_string();
+                break;
+            },
+            Err(_) => {
+                term.fg(term::color::RED).unwrap();
+                writeln!(term, "Error while reading the input.");
+                writeln!(term, "Please enter a valid name.");
+                term.reset().unwrap();
+            }
+        }
+    }
+
+    let api_call = format!("https://trello.com/1/lists?name={}&idBoard={}&defaultLists=false&key={}&token={}", list_name, board_info.board_id, config.trello_api_key, config.trello_app_token);
+
+    match api_call.into_url() {
+        Ok(url) => api_call_url = url,
+        Err(_)  => return Err("Error while parsing API call url.")
+    }
+
+    match http_client.post(api_call_url).send() {
+        Ok(res) => response = res,
+        Err(_)  => return Err("Error calling the API.")
+    }
+
+    match response.read_to_string(&mut response_body){
+        Ok(_)  => (),
+        Err(_) => return Err("Error converting the API response to a string.")
+    }
+
+    if response_body == "invalid key" {
+        return Err("Error, the API key is invalid.");
+    }
+
+    if response_body == "invalid token" {
+        return Err("The app token is invalid.");
+    }
+
+    let data: Value;
+    match serde_json::from_str(&response_body){
+        Ok(_data) => data = _data,
+        Err(_)    => return Err("Error parsing the response.")
+    }
+
+    board_info.list_id = data.as_object().unwrap().get("id").unwrap().as_string().unwrap().to_string();
+
+    Ok(())
 }
 
 
