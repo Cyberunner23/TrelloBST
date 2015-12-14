@@ -311,7 +311,7 @@ fn main() {
         match trello::create_board_and_list(&mut term, &config, &mut board_info){
             Ok(_)    => is_board_created = true,
             Err(err) => {
-                panic!(term, "An error occured: {}", err);
+                panic!(format!("An error occured: {}", err));
             }
         }
     } else {
@@ -380,14 +380,18 @@ fn main() {
             match trello::create_list(&mut term, &config, &mut board_info){
                 Ok(_)    => (),
                 Err(err) => {
-                    term.fg(term::color::RED).unwrap();
-                    writeln!(term, "An error occured: {}", err);
-                    term.reset().unwrap();
+                    panic!(format!("An error occured: {}", err));
                 }
             }
         } else {
             board_info.list_id = board_lists_list.lists[option - 1].id.clone();
         }
+    }
+
+    //create labels
+    match trello::create_pass_fail_labels(&config, &mut board_info){
+        Ok(_) => (),
+        Err(err) => {println!("{}", format!("Error creating the labels: {}", err));}
     }
 }
 

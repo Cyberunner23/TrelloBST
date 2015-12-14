@@ -381,6 +381,89 @@ pub fn create_list(term: &mut Box<term::StdoutTerminal>, config: &config::Trello
     Ok(())
 }
 
+pub fn create_pass_fail_labels(config: &config::TrelloBSTAPIConfig, board_info: &mut TrelloBoardInfo) -> Result<(), &'static str> {
+
+    let     http_client   = Client::new();
+    let mut response:       Response;
+    let mut response_body = String::new();
+    let mut api_call_url:   Url;
+
+    //create build pass label
+    let mut api_call = format!("https://trello.com/1/boards/{}/labels?name=BUILD_PASS&color=green&key={}&token={}", board_info.board_id, config.trello_api_key, config.trello_app_token);
+
+    match api_call.into_url() {
+        Ok(url) => api_call_url = url,
+        Err(_)  => return Err("Error while parsing API call url.")
+    }
+
+    match http_client.post(api_call_url).send() {
+        Ok(res) => response = res,
+        Err(err)  => return Err("Error calling the API.")
+    }
+
+    match response.read_to_string(&mut response_body){
+        Ok(_)  => (),
+        Err(_) => return Err("Error converting the API response to a string.")
+    }
+
+    if response_body == "invalid key" {
+        return Err("Error, the API key is invalid.");
+    }
+
+    if response_body == "invalid token" {
+        return Err("The app token is invalid.");
+    }
+
+
+
+    let data: Value;
+    match serde_json::from_str(&response_body){
+        Ok(_data) => data = _data,
+        Err(_)    => return Err("Error parsing the response.")
+    }
+
+    response_body.clear();
+
+    board_info.build_pass_id = data.as_object().unwrap().get("id").unwrap().as_string().unwrap().to_string();
+
+    //create build fail label
+    api_call.clear();
+    api_call = format!("https://trello.com/1/boards/{}/labels?name=BUILD%20FAIL&color=red&key={}&token={}", board_info.board_id, config.trello_api_key, config.trello_app_token);
+
+    match api_call.into_url() {
+        Ok(url) => api_call_url = url,
+        Err(_)  => return Err("Error while parsing API call url.")
+    }
+
+    match http_client.post(api_call_url).send() {
+        Ok(res) => response = res,
+        Err(err)  => return Err("Error calling the API.")
+    }
+
+    match response.read_to_string(&mut response_body){
+        Ok(_)  => (),
+        Err(_) => return Err("Error converting the API response to a string.")
+    }
+
+    if response_body == "invalid key" {
+        return Err("Error, the API key is invalid.");
+    }
+
+    if response_body == "invalid token" {
+        return Err("The app token is invalid.");
+    }
+
+    let data: Value;
+    match serde_json::from_str(&response_body){
+        Ok(_data) => data = _data,
+        Err(err)  => return Err("Error parsing the response.")
+    }
+
+    board_info.build_fail_id = data.as_object().unwrap().get("id").unwrap().as_string().unwrap().to_string();
+
+    Ok(())
+}
+
 
 
 
