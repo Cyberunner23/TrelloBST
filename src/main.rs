@@ -24,9 +24,12 @@
 */
 
 
-use std::fs::File;
-use std::io::{self, Read, Write};
-use std::path::Path;
+use std::env;
+use std::error::Error;
+use std::fs;
+use std::fs::{File, Metadata};
+use std::io::{self, Write};
+use std::path::{Path, PathBuf};
 use std::process::exit;
 
 
@@ -45,6 +48,11 @@ mod appveyor;
 mod config;
 mod travis_ci;
 mod trello;
+
+
+//TODO: Major cleanup!!!
+//TODO: Macroize common routines.
+//TODO: Put common routines in util file.
 
 
 macro_rules! match_to_none {
@@ -105,6 +113,80 @@ fn parse_config(config_path: &config::TrelloBSTConfigPath) -> Result<config::Tre
             return Err("Cannot open config file for parsing, configuration file won't be used...");
         }
     }
+}
+
+
+fn get_ci_config_output_dir(term: &mut Box<term::StdoutTerminal>) -> PathBuf {
+
+    //Get current working directory.
+    let mut current_working_dir: PathBuf    = PathBuf::new();
+    let mut get_current_working_dir_errored = false;
+    match env::current_dir() {
+        Ok(path_buf) => {
+            current_working_dir = path_buf;
+        },
+        Err(err) => {
+            term.fg(term::color::RED).unwrap();
+            writeln!(term, "An error occurred while getting the current working directory: {}", err.description()).unwrap();
+            term.reset().unwrap();
+            get_current_working_dir_errored = true;
+        }
+    }
+
+    //Get input
+    let mut option_string = String::new();
+    loop{
+
+        if get_current_working_dir_errored {
+            print!("Please enter the directory in which you want the configuration file to be outputted:");
+        } else {
+            print!("Please enter the directory in which you want the configuration file to be outputted. [The default path is the current working directory: {} ]: ", current_working_dir.to_str().unwrap());
+        }
+
+        match_to_none!(term.flush());
+
+        loop {
+
+            match io::stdin().read_line(&mut option_string) {
+                Ok(_)  => option_string = option_string.trim_matches('\n').to_string(),
+                Err(_) => {panic!("Error while reading the input.");}
+            }
+
+            if option_string.is_empty() {
+                if get_current_working_dir_errored {
+                    term.fg(term::color::RED).unwrap();
+                    writeln!(term, "Please enter a path.");
+                    term.reset().unwrap();
+                } else {
+                    option_string = current_working_dir.to_str().unwrap().to_string();
+                    break;
+                }
+            } else {
+                break;
+            }
+        }
+
+        let mut dir_metadata: Metadata;
+        match fs::metadata(PathBuf::from(&option_string)) {
+            Ok(metadata) => {
+                if metadata.is_dir() {
+                    break;
+                } else {
+                    term.fg(term::color::RED).unwrap();
+                    writeln!(term, "Error: The path provided is not a valid path.");
+                    term.reset().unwrap();
+                }
+            },
+            Err(_)       => {
+                term.fg(term::color::RED).unwrap();
+                writeln!(term, "Error: Failed to acquire directory's metadata, please enter a valid path.");
+                term.reset().unwrap();
+            }
+        }
+
+    }
+
+    PathBuf::from(option_string)
 }
 
 
@@ -237,8 +319,10 @@ fn main() {
             Ok(_)    => (),
             Err(err) => {
                 term.fg(term::color::RED).unwrap();
-                match_to_none!(writeln!(term, "{}", err));
+                match_to_none!(writeln!(term, "Error: {}", err));
+                match_to_none!(writeln!(term, "Configuration file won't be used..."));
                 term.reset().unwrap();
+                is_using_config_file = false;
             }
         }
     }
@@ -340,7 +424,7 @@ fn main() {
             counter += 1;
         }
         term.fg(term::color::GREEN).unwrap();
-        println!("[{}] Create a new list.", counter);
+        writeln!(term, "[{}] Create a new list.", counter);
         term.reset().unwrap();
 
         let mut option_str    = String::new();
@@ -389,9 +473,147 @@ fn main() {
     }
 
     //create labels
+
     match trello::create_pass_fail_labels(&config, &mut board_info){
         Ok(_) => (),
         Err(err) => {println!("{}", format!("Error creating the labels: {}", err));}
+    }
+
+
+    ////////////////////////////////////////////////////////////
+    //               Setup Travis-CI/Appveyor                 //
+    ////////////////////////////////////////////////////////////
+
+    loop {
+
+        //Print options
+        println!("For which continuous integration service do you want a configuration file for?");
+        println!("[1] Travis-CI");
+        println!("[2] AppVeyor");
+        term.fg(term::color::RED).unwrap();
+        writeln!(term, "[3] Quit.");
+        term.reset().unwrap();
+
+        let mut option_str    = String::new();
+        let mut option: usize = 0;
+        loop {
+            print!("Please enter an option: ");
+            match_to_none!(term.flush());
+            match io::stdin().read_line(&mut option_str) {
+                Ok(_)  => {
+                    option_str = option_str.trim_matches('\n').to_string();
+                    match option_str.parse::<usize>(){
+                        Ok(_option) => {
+                            option = _option;
+                        },
+                        Err(_)      => {
+                            option_str.clear();
+                            term.fg(term::color::RED).unwrap();
+                            match_to_none!(writeln!(term, "Error while parsing the input."));
+                            term.reset().unwrap();
+                        }
+                    }
+                },
+                Err(_) => {panic!("Error while reading the input.");}
+            }
+
+            if option <= 3 && option > 0 {
+                break;
+            }else {
+                option_str.clear();
+                term.fg(term::color::RED).unwrap();
+                match_to_none!(writeln!(term, "Please enter a valid option."));
+                term.reset().unwrap();
+            }
+        }
+
+        //Get Travis-CI/Appveyor config file output dir.
+        let mut ci_config_output_dir = get_ci_config_output_dir(&mut term);
+
+        //TODO: Major cleanup, this is a mess....
+        match option {
+            1 => {
+                let mut travis_yml_path     = ci_config_output_dir;
+                let mut is_api_setup_failed = false;
+                let mut is_file_create_fail = false;
+                travis_yml_path.push(".travis.yml");
+
+                //Get access token / API key
+                //NOTE: A little workaround... Apparently cannot check if a borrowed bool is true...
+                status_print!(term, "Setting up the Travis-CI API key.");
+                match travis_ci::setup_api(&mut term, is_using_config_file, &mut config){
+                    Ok(_is_using_config_file) => {
+                        is_using_config_file = _is_using_config_file;
+                        if is_using_config_file {
+                            match config::TrelloBSTAPIConfig::save_config(&config_path, &config) {
+                                Ok(_)    => (),
+                                Err(err) => {
+                                    term.fg(term::color::RED).unwrap();
+                                    match_to_none!(writeln!(term, "Error: {}", err));
+                                    match_to_none!(writeln!(term, "Configuration file won't be used..."));
+                                    term.reset().unwrap();
+                                    is_using_config_file = false;
+                                }
+                            }
+                        }
+                        status_print_success!(term, "Setting up the Travis-CI API key.");
+                    }
+                    Err(err)                  => {
+                        status_print_error!(term, "Setting up the Travis-CI API key.");
+                        term.fg(term::color::RED).unwrap();
+                        match_to_none!(writeln!(term, "Error setting up the travis-CI API key: {}", err));
+                        term.reset().unwrap();
+                        is_api_setup_failed = true;
+                    }
+                }
+
+                //Get repo tag
+                loop{
+
+                    //Get repo tag
+                    print!("Please enter the repo you wish to get the .travis.yml for in the form of user/repo: ");
+                    match_to_none!(term.flush());
+                    option_str.clear();
+                    match io::stdin().read_line(&mut option_str) {
+                        Ok(_)  => {
+                            option_str = option_str.trim_matches('\n').to_string();
+                            match option_str.parse::<usize>(){
+                                Ok(_option) => {
+                                    option = _option;
+                                },
+                                Err(_)      => {
+                                    option_str.clear();
+                                    term.fg(term::color::RED).unwrap();
+                                    match_to_none!(writeln!(term, "Error while parsing the input."));
+                                    term.reset().unwrap();
+                                    is_file_create_fail = true;
+                                }
+                            }
+                        },
+                        Err(_) => {panic!("Error while reading the input.");}
+                    }
+
+                    if !is_file_create_fail {
+                        //TODO: Create .travis.yml
+                        //if invalid repo tag, retry, if anything else loop around to ci select
+                    }
+                }
+
+                if !is_api_setup_failed || !is_file_create_fail{
+                    break;
+                }
+            },
+            2 => {
+                let mut appveyor_yml_path = ci_config_output_dir;
+                appveyor_yml_path.push("appveyor.yml");
+                //TODO: Setup AppVeyor API Key
+                //TODO: Create appveyor.yml
+
+                break;
+            },
+            3 => exit(0),
+            _ => {panic!("An invalid option slipped through...");}
+        }
     }
 }
 
