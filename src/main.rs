@@ -48,50 +48,48 @@ mod appveyor;
 mod config;
 mod travis_ci;
 mod trello;
+mod utils;
 
 
 //TODO: Major cleanup!!!
 //TODO: Macroize common routines.
 //TODO: Put common routines in util file.
 
+include!("utils_macros.rs");
 
-macro_rules! match_to_none {
-    ($match_expr:expr) => {
-        match $match_expr {
-            Ok(_)  => (),
-            Err(_) => (),
-        }
-    }
-}
 
-macro_rules! status_print {
-    ($term:expr, $($msg:tt)*) => {
-        match_to_none!($term.write_fmt(format_args!("[ ] {}", format_args!($($msg)*))));
-        match_to_none!($term.flush());
-    }
-}
-
-macro_rules! status_print_success {
-    ($term:expr, $($msg:tt)*) => {
-        match_to_none!($term.carriage_return());
-        match_to_none!($term.write_fmt(format_args!("[")));
-        match_to_none!($term.fg(term::color::GREEN));
-        match_to_none!($term.write_fmt(format_args!("✓")));
-        match_to_none!($term.reset());
-        match_to_none!($term.write_fmt(format_args!("] {}\n", format_args!($($msg)*))));
-        match_to_none!($term.flush());
-    }
-}
-
-macro_rules! status_print_error {
-    ($term:expr, $($msg:tt)*) => {
-        match_to_none!($term.carriage_return());
-        match_to_none!($term.write_fmt(format_args!("[")));
-        match_to_none!($term.fg(term::color::RED));
-        match_to_none!($term.write_fmt(format_args!("✗")));
-        match_to_none!($term.reset());
-        match_to_none!($term.write_fmt(format_args!("] {}\n", format_args!($($msg)*))));
-        match_to_none!($term.flush());
+fn get_config_dir(term: &mut Box<term::StdoutTerminal>, is_using_config_file: &mut bool, is_using_custom_config: bool, path_str: &str) -> Result<config::TrelloBSTConfigPath, ()>{
+    if is_using_custom_config {
+        let path     = Path::new(path_str);
+        let status   = utils::StatusPrint::from_string(&mut term, format!("Looking for the configuration file: {}", path_str.to_string()));
+        match config::TrelloBSTConfigPath::try_custom_config_path(path) {
+            Ok(config_path) => {
+                status.success(&mut term);
+                return Ok(config_path);
+            },
+            Err(err)    => {
+                *is_using_config_file = false;
+                status.error(&mut term);
+                writeln_red!(term, "An error occurred: {}", err);
+                writeln_red!(term, "Configuration file won't be used...");
+                return Err(());
+            },
+        };
+    } else {
+        let status = utils::StatusPrint::from_str(&mut term, "Looking for the configuration file in default location...");
+        match config::TrelloBSTConfigPath::try_default_config_path() {
+            Ok(config_path) => {
+                status.success(&mut term);
+                return Ok(config_path);
+            },
+            Err(err)    => {
+                *is_using_config_file = false;
+                status.error(&mut term);
+                writeln_red!(term, "An error occurred: {}", err);
+                writeln_red!(term, "Configuration file won't be used...");
+                return Err(());
+            },
+        };
     }
 }
 
@@ -126,9 +124,7 @@ fn get_ci_config_output_dir(term: &mut Box<term::StdoutTerminal>) -> PathBuf {
             current_working_dir = path_buf;
         },
         Err(err) => {
-            term.fg(term::color::RED).unwrap();
-            writeln!(term, "An error occurred while getting the current working directory: {}", err.description()).unwrap();
-            term.reset().unwrap();
+            writeln_red!(term, "An error occurred while getting the current working directory: {}", err.description());
             get_current_working_dir_errored = true;
         }
     }
@@ -154,9 +150,7 @@ fn get_ci_config_output_dir(term: &mut Box<term::StdoutTerminal>) -> PathBuf {
 
             if option_string.is_empty() {
                 if get_current_working_dir_errored {
-                    term.fg(term::color::RED).unwrap();
-                    writeln!(term, "Please enter a path.");
-                    term.reset().unwrap();
+                    writeln_red!(term, "Please enter a path.");
                 } else {
                     option_string = current_working_dir.to_str().unwrap().to_string();
                     break;
@@ -172,14 +166,12 @@ fn get_ci_config_output_dir(term: &mut Box<term::StdoutTerminal>) -> PathBuf {
                 if metadata.is_dir() {
                     break;
                 } else {
-                    term.fg(term::color::RED).unwrap();
-                    writeln!(term, "Error: The path provided is not a valid path.");
-                    term.reset().unwrap();
+                    writeln_red!(term, "Error: The path provided is not a valid path.");
                 }
             },
             Err(_)       => {
                 term.fg(term::color::RED).unwrap();
-                writeln!(term, "Error: Failed to acquire directory's metadata, please enter a valid path.");
+                writeln_red!(term, "Error: Failed to acquire directory's metadata, please enter a valid path.");
                 term.reset().unwrap();
             }
         }
@@ -195,11 +187,9 @@ fn main() {
     let     trellobst_version = "0.0.1";
     let mut term              = term::stdout().unwrap();
 
-    term.fg(term::color::GREEN).unwrap();
-    writeln!(term, "╔══════════════════════════════════════════════════════════╗").unwrap();
-    writeln!(term, "║         Welcome to the Trello Build Status Tool.         ║").unwrap();
-    writeln!(term, "╚══════════════════════════════════════════════════════════╝").unwrap();
-    term.reset().unwrap();
+    writeln_green!(term, "╔══════════════════════════════════════════════════════════╗");
+    writeln_green!(term, "║         Welcome to the Trello Build Status Tool.         ║");
+    writeln_green!(term, "╚══════════════════════════════════════════════════════════╝");
 
 
     ////////////////////////////////////////////////////////////
@@ -224,9 +214,7 @@ fn main() {
         .get_matches();
 
     if matches.is_present("CONFIG") && matches.is_present("NO-CONFIG") {
-        term.fg(term::color::RED).unwrap();
-        match_to_none!(writeln!(term, "Error: --config (-c) and --no-config (-n) cannot be used at the same time."));
-        term.reset().unwrap();
+        writeln_red!(term, "Error: --config (-c) and --no-config (-n) cannot be used at the same time.");
         exit(-1);
     }
 
@@ -246,41 +234,43 @@ fn main() {
 
     let mut config_path = config::TrelloBSTConfigPath::new();
 
-    if is_using_custom_config {
-        let path_str = matches.value_of("CONFIG").unwrap_or("");
-        status_print!(term, "Looking for the configuration file: {}", path_str);
-        let path = Path::new(path_str);
-        match config::TrelloBSTConfigPath::try_custom_config_path(path) {
-            Ok(_config) => {
-                config_path = _config;
-                status_print_success!(term, "Looking for the configuration file: {}", path_str);
-            },
-            Err(err)    => {
-                is_using_config_file = false;
-                status_print_error!(term, "Looking for the configuration file: {}", path_str);
-                term.fg(term::color::RED).unwrap();
-                match_to_none!(writeln!(term, "An error occurred: {}", err));
-                match_to_none!(writeln!(term, "Configuration file won't be used..."));
-                term.reset().unwrap();
-            },
-        };
-    } else {
-        status_print!(term, "Looking for the configuration file in default location...");
-        match config::TrelloBSTConfigPath::try_default_config_path() {
-            Ok(_config) => {
-                status_print_success!(term, "Looking for the configuration file in default location...");
-                config_path = _config;
-            },
-            Err(err)    => {
-                is_using_config_file = false;
-                status_print_error!(term, "Looking for the configuration file in default location...");
-                term.fg(term::color::RED).unwrap();
-                match_to_none!(writeln!(term, "An error occurred: {}", err));
-                match_to_none!(writeln!(term, "Configuration file won't be used..."));
-                term.reset().unwrap();
-            },
-        };
-    }
+    //matches.value_of("CONFIG").unwrap_or("");
+
+    get_config_dir(&mut term, &mut is_using_custom_config, matches.value_of("CONFIG").unwrap_or(""));
+
+    //if is_using_custom_config {
+    //    let path_str = matches.value_of("CONFIG").unwrap_or("");
+    //    let path     = Path::new(path_str);
+    //    let status   = utils::StatusPrint::from_string(&mut term, format!("Looking for the configuration file: {}", path_str));
+    //    match config::TrelloBSTConfigPath::try_custom_config_path(path) {
+    //        Ok(_config) => {
+    //            config_path = _config;
+    //            status.success(&mut term);
+    //        },
+    //        Err(err)    => {
+    //            is_using_config_file = false;
+    //            status.error(&mut term);
+    //            writeln_red!(term, "An error occurred: {}", err);
+    //            writeln_red!(term, "Configuration file won't be used...");
+    //        },
+    //    };
+    //} else {
+    //    let status = utils::StatusPrint::from_str(&mut term, "Looking for the configuration file in default location...");
+    //    match config::TrelloBSTConfigPath::try_default_config_path() {
+    //        Ok(_config) => {
+    //            status.success(&mut term);
+    //            config_path = _config;
+    //        },
+    //        Err(err)    => {
+    //            is_using_config_file = false;
+    //            status.error(&mut term);
+    //            term.fg(term::color::RED).unwrap();
+    //            match_to_none!(writeln!(term, "An error occurred: {}", err));
+    //            match_to_none!(writeln!(term, "Configuration file won't be used..."));
+    //            term.reset().unwrap();
+    //        },
+    //    };
+    //}
 
 
     ////////////////////////////////////////////////////////////
@@ -290,18 +280,16 @@ fn main() {
     let mut config = config::TrelloBSTAPIConfig::new();
 
     if is_using_config_file {
-        status_print!(term, "Parsing the configuration file.");
+        let status = utils::StatusPrint::from_str(&mut term, "Parsing the configuration file.");
         match parse_config(&config_path) {
             Ok(_config) => {
                 config = _config;
-                status_print_success!(term, "Parsing the configuration file.");
+                status.success(&mut term);
             }
             Err(err)    => {
-                status_print_error!(term, "Parsing the configuration file.");
-                term.fg(term::color::RED).unwrap();
-                match_to_none!(writeln!(term, "An error occurred: {}", err));
-                match_to_none!(writeln!(term, "Configuration file won't be used..."));
-                term.reset().unwrap();
+                status.error(&mut term);
+                writeln_red!(term, "An error occurred: {}", err);
+                writeln_red!(term, "Configuration file won't be used...");
                 is_using_config_file = false;
             }
         }
@@ -318,10 +306,8 @@ fn main() {
         match config::TrelloBSTAPIConfig::save_config(&config_path, &config) {
             Ok(_)    => (),
             Err(err) => {
-                term.fg(term::color::RED).unwrap();
-                match_to_none!(writeln!(term, "Error: {}", err));
-                match_to_none!(writeln!(term, "Configuration file won't be used..."));
-                term.reset().unwrap();
+                writeln_red!(term, "Error: {}", err);
+                writeln_red!(term, "Configuration file won't be used...");
                 is_using_config_file = false;
             }
         }
@@ -335,14 +321,15 @@ fn main() {
     let mut board_info = trello::TrelloBoardInfo::new();
     let mut board_list = trello::MembersMeBoardsResponse::new();
 
+
     //Select/create board
-    status_print!(term, "Acquiring board list from Trello.");
+    let status = utils::StatusPrint::from_str(&mut term, "Acquiring board list from Trello.");
     match trello::acquire_board_list(&config, &mut board_list) {
         Ok(_)    => {
-            status_print_success!(term, "Acquiring board list from Trello.");
+            status.success(&mut term);
         },
         Err(err) => {
-            status_print_error!(term, "Acquiring board list from Trello.");
+            status.error(&mut term);
             panic!(format!("An error occurred while communicating with Trello: {}", err));
         },
     }
@@ -353,9 +340,7 @@ fn main() {
         println!("[{}] {}", i + 1, board_list.boards[i].name);
         counter += 1;
     }
-    term.fg(term::color::GREEN).unwrap();
-    println!("[{}] Create a new board.", counter);
-    term.reset().unwrap();
+    writeln_green!(term, "[{}] Create a new board.", counter);println!("[{}] Create a new board.", counter);
 
     let mut option_str    = String::new();
     let mut option: usize = 0;
@@ -371,9 +356,7 @@ fn main() {
                     },
                     Err(_)      => {
                         option_str.clear();
-                        term.fg(term::color::RED).unwrap();
-                        match_to_none!(writeln!(term, "Error while parsing the input."));
-                        term.reset().unwrap();
+                        writeln_red!(term, "Error while parsing the input.");
                     }
                 }
             },
@@ -384,9 +367,7 @@ fn main() {
             break;
         }else {
             option_str.clear();
-            term.fg(term::color::RED).unwrap();
-            match_to_none!(writeln!(term, "Please enter a valid option."));
-            term.reset().unwrap();
+            writeln_red!(term, "Please enter a valid option.");
         }
     }
 
@@ -402,16 +383,17 @@ fn main() {
         board_info.board_id = board_list.boards[option - 1].id.clone();
     }
 
+
     //Select/create board list
     if !is_board_created {
-        status_print!(term, "Acquiring board's lists list from Trello.");
+        let status = utils::StatusPrint::from_str(&mut term, "Acquiring board's lists list from Trello.");
         let mut board_lists_list = trello::BoardsResponse::new();
         match trello::acquire_board_lists_list(&config, &board_info, &mut board_lists_list) {
             Ok(_)    => {
-                status_print_success!(term, "Acquiring board's lists list from Trello.");
+                status.success(&mut term);
             },
             Err(err) => {
-                status_print_error!(term, "Acquiring board's lists list from Trello.");
+                status.error(&mut term);
                 panic!(format!("An error occurred while communicating with Trello: {}", err));
             },
         }
@@ -423,9 +405,8 @@ fn main() {
             println!("[{}] {}", i + 1, board_lists_list.lists[i].name);
             counter += 1;
         }
-        term.fg(term::color::GREEN).unwrap();
-        writeln!(term, "[{}] Create a new list.", counter);
-        term.reset().unwrap();
+        writeln_red!(term, "[{}] Create a new list.", counter);
+
 
         let mut option_str    = String::new();
         let mut option: usize = 0;
@@ -441,9 +422,7 @@ fn main() {
                         },
                         Err(_)      => {
                             option_str.clear();
-                            term.fg(term::color::RED).unwrap();
-                            match_to_none!(writeln!(term, "Error while parsing the input."));
-                            term.reset().unwrap();
+                            writeln_red!(term, "Error while parsing the input.");
                         }
                     }
                 },
@@ -454,9 +433,7 @@ fn main() {
                 break;
             }else {
                 option_str.clear();
-                term.fg(term::color::RED).unwrap();
-                match_to_none!(writeln!(term, "Please enter a valid option."));
-                term.reset().unwrap();
+                writeln_red!(term, "Please enter a valid option.");
             }
         }
 
@@ -472,11 +449,11 @@ fn main() {
         }
     }
 
+    //TODO: Different behavior on fail?
     //create labels
-
     match trello::create_pass_fail_labels(&config, &mut board_info){
         Ok(_) => (),
-        Err(err) => {println!("{}", format!("Error creating the labels: {}", err));}
+        Err(err) => {writeln_red!(term, "Error creating the labels: {}", err);}
     }
 
 
@@ -490,9 +467,7 @@ fn main() {
         println!("For which continuous integration service do you want a configuration file for?");
         println!("[1] Travis-CI");
         println!("[2] AppVeyor");
-        term.fg(term::color::RED).unwrap();
-        writeln!(term, "[3] Quit.");
-        term.reset().unwrap();
+        writeln_red!(term, "[3] Quit.");
 
         let mut option_str    = String::new();
         let mut option: usize = 0;
@@ -508,9 +483,7 @@ fn main() {
                         },
                         Err(_)      => {
                             option_str.clear();
-                            term.fg(term::color::RED).unwrap();
-                            match_to_none!(writeln!(term, "Error while parsing the input."));
-                            term.reset().unwrap();
+                            writeln_red!(term, "Error while parsing the input.");
                         }
                     }
                 },
@@ -521,9 +494,7 @@ fn main() {
                 break;
             }else {
                 option_str.clear();
-                term.fg(term::color::RED).unwrap();
-                match_to_none!(writeln!(term, "Please enter a valid option."));
-                term.reset().unwrap();
+                writeln_red!(term, "Please enter a valid option.");
             }
         }
 
@@ -540,7 +511,8 @@ fn main() {
 
                 //Get access token / API key
                 //NOTE: A little workaround... Apparently cannot check if a borrowed bool is true...
-                status_print!(term, "Setting up the Travis-CI API key.");
+                //TODO: use *bool to do compare
+                let status   = utils::StatusPrint::from_str(&mut term, "Setting up the Travis-CI API key.");
                 match travis_ci::setup_api(&mut term, is_using_config_file, &mut config){
                     Ok(_is_using_config_file) => {
                         is_using_config_file = _is_using_config_file;
@@ -548,21 +520,17 @@ fn main() {
                             match config::TrelloBSTAPIConfig::save_config(&config_path, &config) {
                                 Ok(_)    => (),
                                 Err(err) => {
-                                    term.fg(term::color::RED).unwrap();
-                                    match_to_none!(writeln!(term, "Error: {}", err));
-                                    match_to_none!(writeln!(term, "Configuration file won't be used..."));
-                                    term.reset().unwrap();
+                                    writeln_red!(term, "Error: {}", err);
+                                    writeln_red!(term, "Configuration file won't be used...");
                                     is_using_config_file = false;
                                 }
                             }
                         }
-                        status_print_success!(term, "Setting up the Travis-CI API key.");
+                        status.success(&mut term);
                     }
                     Err(err)                  => {
-                        status_print_error!(term, "Setting up the Travis-CI API key.");
-                        term.fg(term::color::RED).unwrap();
-                        match_to_none!(writeln!(term, "Error setting up the travis-CI API key: {}", err));
-                        term.reset().unwrap();
+                        status.error(&mut term);
+                        writeln_red!(term, "Error setting up the travis-CI API key: {}", err);
                         is_api_setup_failed = true;
                     }
                 }
@@ -583,9 +551,7 @@ fn main() {
                                 },
                                 Err(_)      => {
                                     option_str.clear();
-                                    term.fg(term::color::RED).unwrap();
-                                    match_to_none!(writeln!(term, "Error while parsing the input."));
-                                    term.reset().unwrap();
+                                    writeln_red!(term, "Error while parsing the input.");
                                     is_file_create_fail = true;
                                 }
                             }
