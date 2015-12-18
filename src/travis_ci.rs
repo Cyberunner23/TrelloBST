@@ -49,45 +49,7 @@ extern crate term;
 //                         Macros                         //
 ////////////////////////////////////////////////////////////
 
-macro_rules! match_to_none {
-    ($match_expr:expr) => {
-        match $match_expr {
-            Ok(_)  => (),
-            Err(_) => (),
-        }
-    }
-}
-
-macro_rules! status_print {
-    ($term:expr, $($msg:tt)*) => {
-        match_to_none!($term.write_fmt(format_args!("[ ] {}", format_args!($($msg)*))));
-        match_to_none!($term.flush());
-    }
-}
-
-macro_rules! status_print_success {
-    ($term:expr, $($msg:tt)*) => {
-        match_to_none!($term.carriage_return());
-        match_to_none!($term.write_fmt(format_args!("[")));
-        match_to_none!($term.fg(term::color::GREEN));
-        match_to_none!($term.write_fmt(format_args!("✓")));
-        match_to_none!($term.reset());
-        match_to_none!($term.write_fmt(format_args!("] {}\n", format_args!($($msg)*))));
-        match_to_none!($term.flush());
-    }
-}
-
-macro_rules! status_print_error {
-    ($term:expr, $($msg:tt)*) => {
-        match_to_none!($term.carriage_return());
-        match_to_none!($term.write_fmt(format_args!("[")));
-        match_to_none!($term.fg(term::color::RED));
-        match_to_none!($term.write_fmt(format_args!("✗")));
-        match_to_none!($term.reset());
-        match_to_none!($term.write_fmt(format_args!("] {}\n", format_args!($($msg)*))));
-        match_to_none!($term.flush());
-    }
-}
+include!("utils_macros.rs");
 
 
 ////////////////////////////////////////////////////////////

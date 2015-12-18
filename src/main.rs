@@ -27,7 +27,7 @@
 use std::env;
 use std::error::Error;
 use std::fs;
-use std::fs::{File, Metadata};
+use std::fs::Metadata;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::process::exit;
@@ -56,62 +56,6 @@ mod utils;
 //TODO: Put common routines in util file.
 
 include!("utils_macros.rs");
-
-
-fn get_config_dir(term: &mut Box<term::StdoutTerminal>, is_using_config_file: &mut bool, is_using_custom_config: bool, path_str: &str) -> Result<config::TrelloBSTConfigPath, ()>{
-    if is_using_custom_config {
-        let path     = Path::new(path_str);
-        let status   = utils::StatusPrint::from_string(&mut term, format!("Looking for the configuration file: {}", path_str.to_string()));
-        match config::TrelloBSTConfigPath::try_custom_config_path(path) {
-            Ok(config_path) => {
-                status.success(&mut term);
-                return Ok(config_path);
-            },
-            Err(err)    => {
-                *is_using_config_file = false;
-                status.error(&mut term);
-                writeln_red!(term, "An error occurred: {}", err);
-                writeln_red!(term, "Configuration file won't be used...");
-                return Err(());
-            },
-        };
-    } else {
-        let status = utils::StatusPrint::from_str(&mut term, "Looking for the configuration file in default location...");
-        match config::TrelloBSTConfigPath::try_default_config_path() {
-            Ok(config_path) => {
-                status.success(&mut term);
-                return Ok(config_path);
-            },
-            Err(err)    => {
-                *is_using_config_file = false;
-                status.error(&mut term);
-                writeln_red!(term, "An error occurred: {}", err);
-                writeln_red!(term, "Configuration file won't be used...");
-                return Err(());
-            },
-        };
-    }
-}
-
-
-fn parse_config(config_path: &config::TrelloBSTConfigPath) -> Result<config::TrelloBSTAPIConfig, &'static str>{
-    match File::open(config_path.config_path.as_path()) {
-        Ok(file) => {
-            let mut config_file = file;
-            match config::TrelloBSTAPIConfig::from_file(&mut config_file) {
-                Ok(_config) => {
-                    return Ok(_config)
-                }
-                Err(err)    => {
-                    return Err(err)
-                }
-            }
-        }
-        Err(_)   =>{
-            return Err("Cannot open config file for parsing, configuration file won't be used...");
-        }
-    }
-}
 
 
 fn get_ci_config_output_dir(term: &mut Box<term::StdoutTerminal>) -> PathBuf {
@@ -170,9 +114,7 @@ fn get_ci_config_output_dir(term: &mut Box<term::StdoutTerminal>) -> PathBuf {
                 }
             },
             Err(_)       => {
-                term.fg(term::color::RED).unwrap();
                 writeln_red!(term, "Error: Failed to acquire directory's metadata, please enter a valid path.");
-                term.reset().unwrap();
             }
         }
 
@@ -234,9 +176,14 @@ fn main() {
 
     let mut config_path = config::TrelloBSTConfigPath::new();
 
-    //matches.value_of("CONFIG").unwrap_or("");
-
-    get_config_dir(&mut term, &mut is_using_custom_config, matches.value_of("CONFIG").unwrap_or(""));
+    match config::TrelloBSTConfigPath::get_config_dir(&mut term, &mut is_using_config_file, &is_using_custom_config, matches.value_of("CONFIG").unwrap_or("")) {
+        Ok(_config_path) => {
+            config_path = _config_path;
+        }
+        Err(err)         => {
+            is_using_config_file = false;
+        }
+    }
 
     //if is_using_custom_config {
     //    let path_str = matches.value_of("CONFIG").unwrap_or("");
@@ -281,7 +228,7 @@ fn main() {
 
     if is_using_config_file {
         let status = utils::StatusPrint::from_str(&mut term, "Parsing the configuration file.");
-        match parse_config(&config_path) {
+        match config::TrelloBSTAPIConfig::from_file(&config_path) {
             Ok(_config) => {
                 config = _config;
                 status.success(&mut term);
@@ -340,7 +287,7 @@ fn main() {
         println!("[{}] {}", i + 1, board_list.boards[i].name);
         counter += 1;
     }
-    writeln_green!(term, "[{}] Create a new board.", counter);println!("[{}] Create a new board.", counter);
+    writeln_green!(term, "[{}] Create a new board.", counter);
 
     let mut option_str    = String::new();
     let mut option: usize = 0;

@@ -29,10 +29,39 @@ use std::fs::{File, Metadata, OpenOptions};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
+extern crate term;
+
+mod utils;
+
+
+////////////////////////////////////////////////////////////
+//                         Macros                         //
+////////////////////////////////////////////////////////////
+
+include!("utils_macros.rs");
+
+
+////////////////////////////////////////////////////////////
+//                        Structs                         //
+////////////////////////////////////////////////////////////
 
 pub struct TrelloBSTConfigPath {
     pub config_path: PathBuf
 }
+
+
+#[derive(Serialize, Deserialize)]
+pub struct TrelloBSTAPIConfig {
+    pub trello_api_key:      String,
+    pub trello_app_token:    String,
+    pub travis_access_token: String,
+    pub appveyor_api_token:  String,
+}
+
+
+////////////////////////////////////////////////////////////
+//                         Impls                          //
+////////////////////////////////////////////////////////////
 
 impl TrelloBSTConfigPath {
 
@@ -42,10 +71,44 @@ impl TrelloBSTConfigPath {
         }
     }
 
+    pub fn get_config_dir(term: &mut Box<term::StdoutTerminal>, is_using_config_file: &mut bool, is_using_custom_config: &bool, path_str: &str) -> Result<TrelloBSTConfigPath, ()>{
+        if *is_using_custom_config {
+            let path     = Path::new(path_str);
+            let status   = utils::StatusPrint::from_string(term, format!("Looking for the configuration file: {}", path_str.to_string()));
+            match TrelloBSTConfigPath::try_custom_config_path(path) {
+                Ok(config_path) => {
+                    status.success(term);
+                    return Ok(config_path);
+                },
+                Err(err)        => {
+                    *is_using_config_file = false;
+                    status.error(term);
+                    writeln_red!(term, "An error occurred: {}", err);
+                    writeln_red!(term, "Configuration file won't be used...");
+                    return Err(());
+                },
+            };
+        } else {
+            let status = utils::StatusPrint::from_str(term, "Looking for the configuration file in default location...");
+            match TrelloBSTConfigPath::try_default_config_path() {
+                Ok(config_path) => {
+                    status.success(term);
+                    return Ok(config_path);
+                },
+                Err(err)        => {
+                    *is_using_config_file = false;
+                    status.error(term);
+                    writeln_red!(term, "An error occurred: {}", err);
+                    writeln_red!(term, "Configuration file won't be used...");
+                    return Err(());
+                },
+            };
+        }
+    }
+
     pub fn try_default_config_path() -> Result<TrelloBSTConfigPath, &'static str> {
 
         //Check for an existing config file
-
         let mut trellobst_config_path = TrelloBSTConfigPath::new();
         let mut _home_dir_found:        bool;
 
@@ -90,14 +153,6 @@ impl TrelloBSTConfigPath {
 }
 
 
-#[derive(Serialize, Deserialize)]
-pub struct TrelloBSTAPIConfig {
-    pub trello_api_key:      String,
-    pub trello_app_token:    String,
-    pub travis_access_token: String,
-    pub appveyor_api_token:  String,
-}
-
 impl TrelloBSTAPIConfig {
 
     pub fn new() -> TrelloBSTAPIConfig {
@@ -109,26 +164,36 @@ impl TrelloBSTAPIConfig {
         }
     }
 
-    pub fn from_file(file: &mut File) -> Result<TrelloBSTAPIConfig, &'static str>{
+    pub fn from_file(config_path: &TrelloBSTConfigPath) -> Result<TrelloBSTAPIConfig, &'static str>{
+
+        let mut file: File;
+        match File::open(config_path.config_path.as_path()) {
+            Ok(_file) => {
+                file = _file;
+            }
+            Err(_)    =>{
+                return Err("Cannot open config file for parsing, configuration file won't be used...");
+            }
+        }
+
         let metadata: Metadata;
         match file.metadata() {
             Ok(_metadata)  => {
                 metadata = _metadata;
             }
-            Err(_) => {
+            Err(_)         => {
                 return Err("Cannot gather metadata of the configuration file, configuration file won't be used...")
             }
         }
 
         let api_config         = TrelloBSTAPIConfig::new();
         let file_length: usize = metadata.len() as usize;
-
         if file_length == 0 {
             return Ok(api_config)
         } else {
             let mut data: String = String::with_capacity(file_length +1);
             match file.read_to_string(&mut data) {
-                Ok(_) => {
+                Ok(_)  => {
                     //TODO: better error checking
                     return Ok(serde_json::from_str(&data[..]).unwrap())
                 },
@@ -150,7 +215,7 @@ impl TrelloBSTAPIConfig {
                     Err(_) => Err("Error while saving the configuration file...")
                 }
             }
-            Err(_) => {
+            Err(_)    => {
                 Err("Cannot open configuration for saving...")
             }
         }
