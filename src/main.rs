@@ -185,40 +185,6 @@ fn main() {
         }
     }
 
-    //if is_using_custom_config {
-    //    let path_str = matches.value_of("CONFIG").unwrap_or("");
-    //    let path     = Path::new(path_str);
-    //    let status   = utils::StatusPrint::from_string(&mut term, format!("Looking for the configuration file: {}", path_str));
-    //    match config::TrelloBSTConfigPath::try_custom_config_path(path) {
-    //        Ok(_config) => {
-    //            config_path = _config;
-    //            status.success(&mut term);
-    //        },
-    //        Err(err)    => {
-    //            is_using_config_file = false;
-    //            status.error(&mut term);
-    //            writeln_red!(term, "An error occurred: {}", err);
-    //            writeln_red!(term, "Configuration file won't be used...");
-    //        },
-    //    };
-    //} else {
-    //    let status = utils::StatusPrint::from_str(&mut term, "Looking for the configuration file in default location...");
-    //    match config::TrelloBSTConfigPath::try_default_config_path() {
-    //        Ok(_config) => {
-    //            status.success(&mut term);
-    //            config_path = _config;
-    //        },
-    //        Err(err)    => {
-    //            is_using_config_file = false;
-    //            status.error(&mut term);
-    //            term.fg(term::color::RED).unwrap();
-    //            match_to_none!(writeln!(term, "An error occurred: {}", err));
-    //            match_to_none!(writeln!(term, "Configuration file won't be used..."));
-    //            term.reset().unwrap();
-    //        },
-    //    };
-    //}
-
 
     ////////////////////////////////////////////////////////////
     //                     Parse config                       //
