@@ -72,3 +72,75 @@ macro_rules! write_green {
         match_to_none!($term.reset());
     }
 }
+
+
+macro_rules! get_input_usize {
+    ($term:expr, $var:expr, $msg:tt) => {{
+        let mut input_str = String::new();
+        print!($msg);
+        match_to_none!($term.flush());
+        match io::stdin().read_line(&mut input_str) {
+            Ok(_)  => {
+                input_str = input_str.trim_matches('\n').to_string();
+                match input_str.parse::<usize>(){
+                    Ok(input) => {
+                        *$var = input;
+                    },
+                    Err(_)    => {
+                        writeln_red!($term, "Error while parsing the input.");
+                    }
+                }
+            },
+            Err(_) => {panic!("Error while reading the input.");}
+        }
+    }};
+
+    ($term:expr, $var:expr, $is_success:expr, $msg:tt) => {{
+        let mut input_str = String::new();
+        print!($msg);
+        match_to_none!($term.flush());
+        match io::stdin().read_line(&mut input_str) {
+            Ok(_)  => {
+                input_str = input_str.trim_matches('\n').to_string();
+                match input_str.parse::<usize>(){
+                    Ok(input) => {
+                        *$var        = input;
+                        *$is_success = true;
+                    },
+                    Err(_)    => {
+                    *$is_success = false;
+                        writeln_red!($term, "Error while parsing the input.");
+                    }
+                }
+            },
+            Err(_) => {panic!("Error while reading the input.");}
+        }
+    }}
+}
+
+macro_rules! get_input_string {
+    ($term:expr, $var:expr, $msg:tt) => {{
+        let mut input_str = String::new();
+        print!($msg);
+        match_to_none!($term.flush());
+        match io::stdin().read_line(&mut input_str) {
+            Ok(_)  => {
+                *$var = input_str.trim_matches('\n').to_string();
+            },
+            Err(_) => {panic!("Error while reading the input.");}
+        }
+    }};
+
+    ($term:expr, $var:expr, $is_success:expr, $msg:tt) => {{
+        let mut input_str = String::new();
+        print!($msg);
+        match_to_none!($term.flush());
+        match io::stdin().read_line(&mut input_str) {
+            Ok(_)  => {
+                *$var = input_str.trim_matches('\n').to_string();
+                *$is_success = true;
+            },
+            Err(_) => {panic!("Error while reading the input.");}
+        }
+    }}
+}

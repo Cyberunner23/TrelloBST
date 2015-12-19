@@ -247,7 +247,7 @@ fn main() {
     //                   Setup Trello API                     //
     ////////////////////////////////////////////////////////////
 
-    trello::setup_api(&mut config);
+    trello::setup_api(&mut term, &mut config);
 
     if is_using_config_file{
         match config::TrelloBSTAPIConfig::save_config(&config_path, &config) {
@@ -289,31 +289,14 @@ fn main() {
     }
     writeln_green!(term, "[{}] Create a new board.", counter);
 
-    let mut option_str    = String::new();
     let mut option: usize = 0;
     loop {
-        print!("Please enter an option: ");
-        match_to_none!(term.flush());
-        match io::stdin().read_line(&mut option_str) {
-            Ok(_)  => {
-                option_str = option_str.trim_matches('\n').to_string();
-                match option_str.parse::<usize>(){
-                    Ok(_option) => {
-                        option = _option;
-                    },
-                    Err(_)      => {
-                        option_str.clear();
-                        writeln_red!(term, "Error while parsing the input.");
-                    }
-                }
-            },
-            Err(_) => {panic!("Error while reading the input.");}
-        }
+
+        get_input_usize!(term, &mut option, "Please enter an option: ");
 
         if option <= counter && option > 0 {
             break;
         }else {
-            option_str.clear();
             writeln_red!(term, "Please enter a valid option.");
         }
     }
@@ -355,31 +338,14 @@ fn main() {
         writeln_red!(term, "[{}] Create a new list.", counter);
 
 
-        let mut option_str    = String::new();
         let mut option: usize = 0;
         loop {
-            print!("Please enter an option: ");
-            match_to_none!(term.flush());
-            match io::stdin().read_line(&mut option_str) {
-                Ok(_)  => {
-                    option_str = option_str.trim_matches('\n').to_string();
-                    match option_str.parse::<usize>(){
-                        Ok(_option) => {
-                            option = _option;
-                        },
-                        Err(_)      => {
-                            option_str.clear();
-                            writeln_red!(term, "Error while parsing the input.");
-                        }
-                    }
-                },
-                Err(_) => {panic!("Error while reading the input.");}
-            }
+
+            get_input_usize!(term, &mut option, "Please enter an option: ");
 
             if option <= counter && option > 0 {
                 break;
             }else {
-                option_str.clear();
                 writeln_red!(term, "Please enter a valid option.");
             }
         }
@@ -416,31 +382,14 @@ fn main() {
         println!("[2] AppVeyor");
         writeln_red!(term, "[3] Quit.");
 
-        let mut option_str    = String::new();
         let mut option: usize = 0;
         loop {
-            print!("Please enter an option: ");
-            match_to_none!(term.flush());
-            match io::stdin().read_line(&mut option_str) {
-                Ok(_)  => {
-                    option_str = option_str.trim_matches('\n').to_string();
-                    match option_str.parse::<usize>(){
-                        Ok(_option) => {
-                            option = _option;
-                        },
-                        Err(_)      => {
-                            option_str.clear();
-                            writeln_red!(term, "Error while parsing the input.");
-                        }
-                    }
-                },
-                Err(_) => {panic!("Error while reading the input.");}
-            }
+
+            get_input_usize!(term, &mut option, "Please enter an option: ");
 
             if option <= 3 && option > 0 {
                 break;
             }else {
-                option_str.clear();
                 writeln_red!(term, "Please enter a valid option.");
             }
         }
@@ -486,27 +435,11 @@ fn main() {
                 loop{
 
                     //Get repo tag
-                    print!("Please enter the repo you wish to get the .travis.yml for in the form of user/repo: ");
-                    match_to_none!(term.flush());
-                    option_str.clear();
-                    match io::stdin().read_line(&mut option_str) {
-                        Ok(_)  => {
-                            option_str = option_str.trim_matches('\n').to_string();
-                            match option_str.parse::<usize>(){
-                                Ok(_option) => {
-                                    option = _option;
-                                },
-                                Err(_)      => {
-                                    option_str.clear();
-                                    writeln_red!(term, "Error while parsing the input.");
-                                    is_file_create_fail = true;
-                                }
-                            }
-                        },
-                        Err(_) => {panic!("Error while reading the input.");}
-                    }
+                    let mut option:           usize = 0;
+                    let mut is_input_success: bool  = false;
+                    get_input_usize!(term, &mut option, &mut is_input_success,   "Please enter the repo you wish to get the .travis.yml for in the form of user/repo: ");
 
-                    if !is_file_create_fail {
+                    if is_input_success {
                         //TODO: Create .travis.yml
                         //if invalid repo tag, retry, if anything else loop around to ci select
                     }
