@@ -58,14 +58,59 @@ include!("utils_macros.rs");
 //                       Functions                        //
 ////////////////////////////////////////////////////////////
 
-pub fn setup_api(term: &mut Box<term::StdoutTerminal>, is_using_config_file: bool, config: &mut config::TrelloBSTAPIConfig) -> Result<bool, &'static str> {
+pub fn setup_ci_config(term: &mut Box<term::StdoutTerminal>,
+                       ci_config_output_dir: &mut PathBuf,
+                       is_using_config_file: &mut bool,
+                       is_api_setup_failed: &mut bool,
+                       is_file_create_fail: &mut bool) -> (){
+
+    ci_config_output_dir.push(".travis.yml");
+
+    //Get access token / API key
+    let status   = utils::StatusPrint::from_str(&mut term, "Setting up the Travis-CI API key.");
+    match travis_ci::setup_api(&mut term, &mut is_using_config_file, &mut config){
+        Ok(_) => {
+            status.success(&mut term);
+        }
+        Err(err)                  => {
+            status.error(&mut term);
+            writeln_red!(term, "Error setting up the travis-CI API key: {}", err);
+            writeln_red!(term, "Configuration file won't be used...");
+            is_api_setup_failed = true;
+            return ()
+        }
+    }
+
+    if is_using_config_file {
+        match config::TrelloBSTAPIConfig::save_config(&config_path, &config) {
+            Ok(_)    => (),
+            Err(err) => {
+                writeln_red!(term, "Error: {}", err);
+                writeln_red!(term, "Configuration file won't be used...");
+                is_using_config_file = false;
+            }
+        }
+    }
+
+    //Get repo tag
+    loop{
+
+        //Get repo tag
+        let mut repo_tag: String = String::new();
+        get_input_string!(term, &mut repo_tag, "Please enter the repo you wish to get the .travis.yml for in the form of user/repo: ");
+
+
+    }
+}
+
+pub fn setup_api(term: &mut Box<term::StdoutTerminal>, is_using_config_file: &mut bool, config: &mut config::TrelloBSTAPIConfig) -> Result<(), &'static str> {
 
     if config.travis_access_token.is_empty() {
 
         //Get github token
         let mut github_token = String::new();
         get_input_string!(term, &mut github_token, "");
-        if is_using_config_file {
+        if *is_using_config_file {
             get_input_string!(term, &mut github_token, "Travis-CI currently uses a GitHub access token to authenticate and generate an API key,\n
                                                         please log into GitHub and go to https://github.com/settings/tokens and generate a new \n
                                                         token and input it here. (Note that once the Travis-CI API key is acquired, the GitHub \n
@@ -91,20 +136,26 @@ pub fn setup_api(term: &mut Box<term::StdoutTerminal>, is_using_config_file: boo
 
         match utils::rest_api_call_post_with_header(&api_call, header) {
             Ok(_response_body) => response_body = _response_body,
-            Err(err)           => return Err(err)
+            Err(err)           => {
+                *is_using_config_file = false;
+                return Err(err)
+            }
         }
 
         let data: Value;
         match serde_json::from_str(&response_body){
             Ok(_data) => data = _data,
-            Err(_)    => return Err("Error parsing the response.")
+            Err(_)    => {
+                *is_using_config_file = false;
+                return Err("Error parsing the response.")
+            }
         }
 
         //TODO: Better error reporting
         config.travis_access_token = data.as_object().unwrap().get("access_token").unwrap().as_string().unwrap().to_string();
     }
 
-    Ok(is_using_config_file)
+    Ok(())
 }
 
 //pub fn create_travis_yml() -> Result<(), &'static str> {

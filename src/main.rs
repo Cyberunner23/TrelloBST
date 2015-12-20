@@ -247,38 +247,7 @@ fn main() {
         },
     }
 
-    println!("Which board do you want to setup?");
-    let mut counter = 1;
-    for i in 0..board_list.boards.len() {
-        println!("[{}] {}", i + 1, board_list.boards[i].name);
-        counter += 1;
-    }
-    writeln_green!(term, "[{}] Create a new board.", counter);
-
-    let mut option: usize = 0;
-    loop {
-
-        get_input_usize!(term, &mut option, "Please enter an option: ");
-
-        if option <= counter && option > 0 {
-            break;
-        }else {
-            writeln_red!(term, "Please enter a valid option.");
-        }
-    }
-
-    let mut is_board_created = false;
-    if option == counter {
-        match trello::create_board_and_list(&mut term, &config, &mut board_info){
-            Ok(_)    => is_board_created = true,
-            Err(err) => {
-                panic!(format!("An error occured: {}", err));
-            }
-        }
-    } else {
-        board_info.board_id = board_list.boards[option - 1].id.clone();
-    }
-
+    let is_board_created = trello::board_select_or_create(&mut term, &mut config, &mut board_list, &mut board_info);
 
     //Select/create board list
     if !is_board_created {
@@ -294,45 +263,14 @@ fn main() {
             },
         }
 
-        println!("Which board list do you want to use for the build statuses?");
-
-        let mut counter = 1;
-        for i in 0..board_lists_list.lists.len() {
-            println!("[{}] {}", i + 1, board_lists_list.lists[i].name);
-            counter += 1;
-        }
-        writeln_red!(term, "[{}] Create a new list.", counter);
-
-
-        let mut option: usize = 0;
-        loop {
-
-            get_input_usize!(term, &mut option, "Please enter an option: ");
-
-            if option <= counter && option > 0 {
-                break;
-            }else {
-                writeln_red!(term, "Please enter a valid option.");
-            }
-        }
-
-        if option == counter {
-            match trello::create_list(&mut term, &config, &mut board_info){
-                Ok(_)    => (),
-                Err(err) => {
-                    panic!(format!("An error occured: {}", err));
-                }
-            }
-        } else {
-            board_info.list_id = board_lists_list.lists[option - 1].id.clone();
-        }
+        trello::board_list_select_or_create(&mut term, &mut config, &mut board_lists_list, &mut board_info);
     }
 
     //TODO: Different behavior on fail?
     //create labels
     match trello::create_pass_fail_labels(&config, &mut board_info){
         Ok(_) => (),
-        Err(err) => {writeln_red!(term, "Error creating the labels: {}", err);}
+        Err(err) => {panic!("Error creating the labels: {}", err);}
     }
 
 
@@ -342,6 +280,9 @@ fn main() {
 
     loop {
 
+        //Get Travis-CI/Appveyor config file output dir.
+        let mut ci_config_output_dir = get_ci_config_output_dir(&mut term);
+
         //Print options
         println!("For which continuous integration service do you want a configuration file for?");
         println!("[1] Travis-CI");
@@ -350,18 +291,13 @@ fn main() {
 
         let mut option: usize = 0;
         loop {
-
             get_input_usize!(term, &mut option, "Please enter an option: ");
-
             if option <= 3 && option > 0 {
                 break;
             }else {
                 writeln_red!(term, "Please enter a valid option.");
             }
         }
-
-        //Get Travis-CI/Appveyor config file output dir.
-        let mut ci_config_output_dir = get_ci_config_output_dir(&mut term);
 
         //TODO: Major cleanup, this is a mess....
         match option {
@@ -372,28 +308,27 @@ fn main() {
                 travis_yml_path.push(".travis.yml");
 
                 //Get access token / API key
-                //NOTE: A little workaround... Apparently cannot check if a borrowed bool is true...
-                //TODO: use *bool to do compare
                 let status   = utils::StatusPrint::from_str(&mut term, "Setting up the Travis-CI API key.");
-                match travis_ci::setup_api(&mut term, is_using_config_file, &mut config){
-                    Ok(_is_using_config_file) => {
-                        is_using_config_file = _is_using_config_file;
-                        if is_using_config_file {
-                            match config::TrelloBSTAPIConfig::save_config(&config_path, &config) {
-                                Ok(_)    => (),
-                                Err(err) => {
-                                    writeln_red!(term, "Error: {}", err);
-                                    writeln_red!(term, "Configuration file won't be used...");
-                                    is_using_config_file = false;
-                                }
-                            }
-                        }
+                match travis_ci::setup_api(&mut term, &mut is_using_config_file, &mut config){
+                    Ok(_) => {
                         status.success(&mut term);
                     }
                     Err(err)                  => {
                         status.error(&mut term);
                         writeln_red!(term, "Error setting up the travis-CI API key: {}", err);
+                        writeln_red!(term, "Configuration file won't be used...");
                         is_api_setup_failed = true;
+                    }
+                }
+
+                if is_using_config_file {
+                    match config::TrelloBSTAPIConfig::save_config(&config_path, &config) {
+                        Ok(_)    => (),
+                        Err(err) => {
+                            writeln_red!(term, "Error: {}", err);
+                            writeln_red!(term, "Configuration file won't be used...");
+                            is_using_config_file = false;
+                        }
                     }
                 }
 
@@ -403,7 +338,7 @@ fn main() {
                     //Get repo tag
                     let mut option:           usize = 0;
                     let mut is_input_success: bool  = false;
-                    get_input_usize!(term, &mut option, &mut is_input_success,   "Please enter the repo you wish to get the .travis.yml for in the form of user/repo: ");
+                    get_input_usize!(term, &mut option, &mut is_input_success, "Please enter the repo you wish to get the .travis.yml for in the form of user/repo: ");
 
                     if is_input_success {
                         //TODO: Create .travis.yml

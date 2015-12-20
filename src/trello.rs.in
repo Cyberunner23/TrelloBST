@@ -174,6 +174,43 @@ pub fn acquire_board_list(config: &config::TrelloBSTAPIConfig, board_list: &mut 
     Ok(())
 }
 
+pub fn board_select_or_create(term: &mut Box<term::StdoutTerminal>, config: &mut config::TrelloBSTAPIConfig, board_list: &mut MembersMeBoardsResponse, board_info: &mut TrelloBoardInfo)-> bool {
+
+    println!("Which board do you want to setup?");
+    let mut counter = 1;
+    for i in 0..board_list.boards.len() {
+        println!("[{}] {}", i + 1, board_list.boards[i].name);
+        counter += 1;
+    }
+    writeln_green!(term, "[{}] Create a new board.", counter);
+
+    let mut option: usize = 0;
+    loop {
+
+        get_input_usize!(term, &mut option, "Please enter an option: ");
+
+        if option <= counter && option > 0 {
+            break;
+        }else {
+            writeln_red!(term, "Please enter a valid option.");
+        }
+    }
+
+    let mut is_board_created = false;
+    if option == counter {
+        match create_board_and_list(term, &config, board_info){
+            Ok(_)    => is_board_created = true,
+            Err(err) => {
+                panic!(format!("An error occured: {}", err));
+            }
+        }
+    } else {
+        board_info.board_id = board_list.boards[option - 1].id.clone();
+    }
+
+    return is_board_created;
+}
+
 pub fn create_board_and_list(term: &mut Box<term::StdoutTerminal>, config: &config::TrelloBSTAPIConfig, board_info: &mut TrelloBoardInfo) -> Result<(), &'static str> {
 
     //Create board
@@ -260,6 +297,42 @@ pub fn create_list(term: &mut Box<term::StdoutTerminal>, config: &config::Trello
     board_info.list_id = data.as_object().unwrap().get("id").unwrap().as_string().unwrap().to_string();
 
     Ok(())
+}
+
+pub fn board_list_select_or_create(term: &mut Box<term::StdoutTerminal>, config: &mut config::TrelloBSTAPIConfig, board_lists_list: &mut BoardsResponse, board_info: &mut TrelloBoardInfo) {
+
+    println!("Which board list do you want to use for the build statuses?");
+
+    let mut counter = 1;
+    for i in 0..board_lists_list.lists.len() {
+        println!("[{}] {}", i + 1, board_lists_list.lists[i].name);
+        counter += 1;
+    }
+    writeln_red!(term, "[{}] Create a new list.", counter);
+
+
+    let mut option: usize = 0;
+    loop {
+
+        get_input_usize!(term, &mut option, "Please enter an option: ");
+
+        if option <= counter && option > 0 {
+            break;
+        }else {
+            writeln_red!(term, "Please enter a valid option.");
+        }
+    }
+
+    if option == counter {
+        match create_list(term, &config, board_info){
+            Ok(_)    => (),
+            Err(err) => {
+                panic!(format!("An error occured: {}", err));
+            }
+        }
+    } else {
+        board_info.list_id = board_lists_list.lists[option - 1].id.clone();
+    }
 }
 
 pub fn create_pass_fail_labels(config: &config::TrelloBSTAPIConfig, board_info: &mut TrelloBoardInfo) -> Result<(), &'static str> {
