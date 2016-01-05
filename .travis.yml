@@ -10,7 +10,7 @@ install:
   - mkdir ./openssl
   - cd ./openssl
   - curl https://openssl.org/source/openssl-1.0.2e.tar.gz | tar --strip-components=1 -xzf -
-  - ./Configure --prefix=$HOME/openssl shared
+  - ./config
   - make
   - make install
   - cd ..
