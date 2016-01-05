@@ -47,8 +47,9 @@ mod inner {
     use std::path::Path;
 
     pub fn main() {
-        expand!("src/config.rs.in", "config.rs");
-        expand!("src/trello.rs.in", "trello.rs");
+        expand!("src/config.rs.in",    "config.rs");
+        expand!("src/trello.rs.in",    "trello.rs");
+        expand!("src/travis_ci.rs.in", "travis_ci.rs");
     }
 }
 

@@ -302,53 +302,7 @@ fn main() {
         //TODO: Major cleanup, this is a mess....
         match option {
             1 => {
-                let mut travis_yml_path     = ci_config_output_dir;
-                let mut is_api_setup_failed = false;
-                let mut is_file_create_fail = false;
-                travis_yml_path.push(".travis.yml");
-
-                //Get access token / API key
-                let status   = utils::StatusPrint::from_str(&mut term, "Setting up the Travis-CI API key.");
-                match travis_ci::setup_api(&mut term, &mut is_using_config_file, &mut config){
-                    Ok(_) => {
-                        status.success(&mut term);
-                    }
-                    Err(err)                  => {
-                        status.error(&mut term);
-                        writeln_red!(term, "Error setting up the travis-CI API key: {}", err);
-                        writeln_red!(term, "Configuration file won't be used...");
-                        is_api_setup_failed = true;
-                    }
-                }
-
-                if is_using_config_file {
-                    match config::TrelloBSTAPIConfig::save_config(&config_path, &config) {
-                        Ok(_)    => (),
-                        Err(err) => {
-                            writeln_red!(term, "Error: {}", err);
-                            writeln_red!(term, "Configuration file won't be used...");
-                            is_using_config_file = false;
-                        }
-                    }
-                }
-
-                //Get repo tag
-                loop{
-
-                    //Get repo tag
-                    let mut option:           usize = 0;
-                    let mut is_input_success: bool  = false;
-                    get_input_usize!(term, &mut option, &mut is_input_success, "Please enter the repo you wish to get the .travis.yml for in the form of user/repo: ");
-
-                    if is_input_success {
-                        //TODO: Create .travis.yml
-                        //if invalid repo tag, retry, if anything else loop around to ci select
-                    }
-                }
-
-                if !is_api_setup_failed || !is_file_create_fail{
-                    break;
-                }
+                travis_ci::create_travis_yml(&mut term, &config, &mut board_info, &mut ci_config_output_dir);
             },
             2 => {
                 let mut appveyor_yml_path = ci_config_output_dir;

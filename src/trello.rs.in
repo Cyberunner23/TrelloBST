@@ -308,7 +308,7 @@ pub fn board_list_select_or_create(term: &mut Box<term::StdoutTerminal>, config:
         println!("[{}] {}", i + 1, board_lists_list.lists[i].name);
         counter += 1;
     }
-    writeln_red!(term, "[{}] Create a new list.", counter);
+    writeln_green!(term, "[{}] Create a new list.", counter);
 
 
     let mut option: usize = 0;

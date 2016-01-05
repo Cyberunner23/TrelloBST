@@ -13,12 +13,16 @@ nightly = ["serde_macros"]
 serde_codegen = { version = "*", optional = true }
 syntex        = "*"
 
-
 [dependencies]
 clap            = "1.5.3"
 hyper           = "0.7.0"
-openssl         = "0.7.1"
+#Currently requires an override "paths = ["/home/cyberunner23/Dev/DEV_PROJ/rust-openssl/"]" in ~/.cargo/config
+openssl         = "0.7.4"
+rustc-serialize = "*"
 serde           = "*"
 serde_json      = "*"
 serde_macros    = { version = "*", optional = true }
 term            = "0.2.14"
+
+
+

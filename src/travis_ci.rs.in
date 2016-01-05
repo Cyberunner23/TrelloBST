@@ -1,0 +1,402 @@
+/*
+    Copyright (c) 2015, Alex Frappier Lachapelle
+    All rights reserved.
+
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions are met:
+
+    1. Redistributions of source code must retain the above copyright notice, this
+       list of conditions and the following disclaimer.
+    2. Redistributions in binary form must reproduce the above copyright notice,
+       this list of conditions and the following disclaimer in the documentation
+       and/or other materials provided with the distribution.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+    ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+    WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+    DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+    ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+    (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+    LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+    ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+    (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
+
+use std::borrow::Borrow;
+use std::error::Error;
+use std::io;
+use std::io::{Cursor, Read, Write};
+use std::fs::File;
+use std::path::PathBuf;
+
+use config;
+
+extern crate rustc_serialize;
+use self::rustc_serialize::base64::{self, ToBase64};
+
+extern crate hyper;
+use hyper::Client;
+use hyper::client::IntoUrl;
+use hyper::client::response::Response;
+use hyper::header::Headers;
+use hyper::Url;
+
+extern crate term;
+
+extern crate openssl;
+use self::openssl::crypto::pkey::PKey;
+use self::openssl::ssl::error::{OpensslError, SslError};
+
+use trello;
+use utils;
+
+
+////////////////////////////////////////////////////////////
+//                         Macros                         //
+////////////////////////////////////////////////////////////
+
+include!("utils_macros.rs");
+
+
+////////////////////////////////////////////////////////////
+//                        Structs                         //
+////////////////////////////////////////////////////////////
+
+pub struct TravisEncryptedVars {
+    pub trello_api_key:   String,
+    pub trello_app_token: String,
+    pub list_id:          String,
+    pub build_pass_id:    String,
+    pub build_fail_id:    String,
+}
+
+#[derive(Deserialize)]
+pub struct RepoResponse {
+    key:  String,
+    fingerprint: String
+}
+
+
+////////////////////////////////////////////////////////////
+//                         Impls                          //
+////////////////////////////////////////////////////////////
+
+impl TravisEncryptedVars {
+    pub fn new() -> TravisEncryptedVars {
+        TravisEncryptedVars{
+            trello_api_key:   "".to_string(),
+            trello_app_token: "".to_string(),
+            list_id:          "".to_string(),
+            build_pass_id:    "".to_string(),
+            build_fail_id:    "".to_string(),
+        }
+    }
+}
+
+impl RepoResponse {
+    pub fn new() -> RepoResponse {
+        RepoResponse {
+            key:         "".to_string(),
+            fingerprint: "".to_string(),
+        }
+    }
+}
+
+
+////////////////////////////////////////////////////////////
+//                       Functions                        //
+////////////////////////////////////////////////////////////
+
+pub fn create_travis_yml(term: &mut Box<term::StdoutTerminal>, config: &config::TrelloBSTAPIConfig, board_info: &mut trello::TrelloBoardInfo, ci_config_output_dir: &mut PathBuf) -> Result<(), &'static str> {
+
+    //Get repo tag and public key
+    let mut crypto_state = PKey::new();
+    let mut repo_tag     = String::new();
+    get_repo_tag_and_pub_key(term, ci_config_output_dir, &mut crypto_state, &mut repo_tag);
+
+    //Encrypt Variables
+    let encrypted_vars = encrypt_vars(board_info, &config, &mut crypto_state);
+
+    //Generate file
+    generate_file(ci_config_output_dir, &encrypted_vars, &repo_tag)
+
+}
+
+pub fn get_repo_tag_and_pub_key(term: &mut Box<term::StdoutTerminal>, ci_config_output_dir: &mut PathBuf, crypto_state: &mut PKey, repo_tag: &mut String) {
+    loop{
+        //Repo Tag
+        get_input_string!(term, repo_tag, "Please enter the repo you wish to get the .travis.yml for in the form of user/repo (Note that it is case sensitive): ");
+
+        //Public Key
+        let mut api_call            = format!("https://api.travis-ci.org/repos/{}/key", repo_tag);
+        let mut response_body       = String::new();
+        let mut is_api_call_success = true;
+
+        match utils::rest_api_call_get(&api_call) {
+            Ok(_response_body) => response_body = _response_body,
+            Err(err)           => {
+                is_api_call_success = false;
+                writeln_red!(term, "There was an error getting the public encryption key for {}: {}", repo_tag, err);
+            }
+        }
+
+        //TODO: better error reporting.
+        let mut repo_response = RepoResponse::new();
+        match serde_json::from_str(&response_body) {
+            Ok(_repo_response) => repo_response = _repo_response,
+            Err(_)             => {
+                is_api_call_success = false;
+                writeln_red!(term, "There was an error parsing the api response.");
+            }
+        }
+
+        repo_response.key = repo_response.key.replace("-----BEGIN RSA PUBLIC KEY-----", "-----BEGIN PUBLIC KEY-----");
+        repo_response.key = repo_response.key.replace("-----END RSA PUBLIC KEY-----", "-----END PUBLIC KEY-----");
+
+        if is_api_call_success {
+            let mut buff = Cursor::new(repo_response.key.as_bytes());
+            let mut thing = String::new();
+            //PKey::public_rsa_key_from_pem
+            match PKey::public_key_from_pem(&mut buff) {
+                Ok(_crypto_state) => {
+                    *crypto_state = _crypto_state;
+                    break;
+                }
+                Err(err)          => {
+                    match err {
+                        SslError::OpenSslErrors(err) => {
+                            for errs in err.iter() {
+                                writeln_red!(term, "There was an error parsing the encryption key: {:?}", errs);
+                            }
+                        }
+                        _ => ()
+                    }
+                }
+            }
+        }
+    }
+}
+
+pub fn encrypt_vars(board_info: &mut trello::TrelloBoardInfo, config: &config::TrelloBSTAPIConfig, crypto_state: &mut PKey) -> TravisEncryptedVars{
+
+    //Create environment variables
+    let trello_api_key_env_var   = format!("TRELLO_API_KEY={}",           config.trello_api_key);
+    let trello_app_token_env_var = format!("TRELLO_API_TOKEN={}",         config.trello_app_token);
+    let list_id_env_var          = format!("TRELLO_API_LIST_ID={}",       board_info.list_id);
+    let build_pass_id_env_var    = format!("TRELLO_API_BUILD_PASS_ID={}", board_info.build_pass_id);
+    let build_fail_id_env_var    = format!("TRELLO_API_BUILD_FAIL_ID={}", board_info.build_fail_id);
+
+    //Encrypt environment variables
+    TravisEncryptedVars {
+        trello_api_key:   crypto_state.encrypt(&trello_api_key_env_var.into_bytes()).to_base64(base64::STANDARD),
+        trello_app_token: crypto_state.encrypt(&trello_app_token_env_var.into_bytes()).to_base64(base64::STANDARD),
+        list_id:          crypto_state.encrypt(&list_id_env_var.into_bytes()).to_base64(base64::STANDARD),
+        build_pass_id:    crypto_state.encrypt(&build_pass_id_env_var.into_bytes()).to_base64(base64::STANDARD),
+        build_fail_id:    crypto_state.encrypt(&build_fail_id_env_var.into_bytes()).to_base64(base64::STANDARD),
+    }
+}
+
+pub fn generate_file(ci_config_output_dir: &mut PathBuf, encrypted_vars: &TravisEncryptedVars, repo_tag: &String) -> Result<(), &'static str> {
+
+    let mut travis_file: File;
+    ci_config_output_dir.push(".travis.yml");
+    match File::create(ci_config_output_dir.as_path()) {
+        Ok(_travis_file)  => {
+            travis_file = _travis_file;
+        }
+        Err(_)    => {
+            return Err("Failed to create .travis.yml");
+        }
+    }
+
+    let mut file_data = String::new();
+    file_data = format!(
+    "sudo: false
+os:
+  - linux
+
+env:
+  global:
+    - BUILD_DIRECTORY=
+    - secure: \"{0}\"
+    - secure: \"{1}\"
+    - secure: \"{2}\"
+    - secure: \"{3}\"
+    - secure: \"{4}\"
+
+after_success:
+  - if [ ${{TRAVIS_SECURE_ENV_VARS}} = true ] ; then
+      && tar -zcf build.tar.gz ${{BUILD_DIRECTORY}}
+      && buildLink=$(curl --upload-file ./build.tar.gz https://transfer.sh/build.tar.gz)
+      && travis_branch=\"[\"${{TRAVIS_BRANCH}}\"]
+      && ci_name=\"[Travis-CI]\"
+      && os_name=\"[\"${{TRAVIS_OS_NAME}}\"]\"
+      && compiler=\"[\"${{CXXCOMPILER}}\"]:\"
+      && pass=\"%20#\"${{TRAVIS_BUILD_NUMBER}}\"%20PASSED\"
+      && message=${{travis_branch}}${{ci_name}}${{os_name}}${{compiler}}${{pass}}
+      && card_name=\"name=\"${{message}}\"
+      && additional_data=\"&due=null&pos=top\"
+      && description=\"&desc=\\[Build\\]:%20\"${{buildLink}}\"%0D\\[Logs\\]:%20https://travis-ci.org/{5}/jobs/\"${{TRAVIS_JOB_ID}}\"
+      && trello_data=\"&idList=\"${{TRELLO_API_LIST_ID}}\"&idLabels=\"${{TRELLO_API_BUILD_PASS_ID}}\"&token=\"${{TRELLO_API_TOKEN}}\"&key=\"${{TRELLO_API_KEY}}
+      && data=${{card_name}}${{additional_data}}${{description}}${{trello_data}}
+      && curl -s -o /dev/null -w \"%{{http_code}}\\n\" --data ${{data}} https://api.trello.com/1/cards;
+    fi
+
+after_failure:
+  - if [ ${{TRAVIS_SECURE_ENV_VARS}} = true ] ; then
+      && travis_branch=\"[\"${{TRAVIS_BRANCH}}\"]
+      && ci_name=\"[Travis-CI]\"
+      && os_name=\"[\"${{TRAVIS_OS_NAME}}\"]\"
+      && compiler=\"[\"${{CXXCOMPILER}}\"]:\"
+      && fail=\"%20#\"${{TRAVIS_BUILD_NUMBER}}\"%20FAILED\"
+      && message=${{travis_branch}}${{ci_name}}${{os_name}}${{compiler}}${{fail}}
+      && card_name=\"name=\"${{message}}\"
+      && additional_data=\"&due=null&pos=top\"
+      && description=\"&desc=\\[Build\\]:%20\"${{buildLink}}\"%0D\\[Logs\\]:%20https://travis-ci.org/{5}/jobs/\"${{TRAVIS_JOB_ID}}\"
+      && trello_data=\"&idList=\"${{TRELLO_API_LIST_ID}}\"&idLabels=\"${{TRELLO_API_BUILD_PASS_ID}}\"&token=\"${{TRELLO_API_TOKEN}}\"&key=\"${{TRELLO_API_KEY}}
+      && data=${{card_name}}${{additional_data}}${{description}}${{trello_data}}
+      && curl -s -o /dev/null -w \"%{{http_code}}\\n\" --data ${{data}} https://api.trello.com/1/cards;
+    fi
+", encrypted_vars.trello_api_key,
+   encrypted_vars.trello_app_token,
+   encrypted_vars.list_id,
+   encrypted_vars.build_pass_id,
+   encrypted_vars.build_fail_id,
+   repo_tag);
+
+    match travis_file.write_all(&file_data.into_bytes()[..]) {
+        Ok(()) => (),
+        Err(_) => return Err("Error while writing to the file.")
+    }
+
+    match travis_file.flush() {
+        Ok(()) => (),
+        Err(_) => return Err("Error while the buffer writing to the file.")
+    }
+
+    Ok(())
+}
+
+//pub fn setup_ci_config(term: &mut Box<term::StdoutTerminal>,
+//                       config:               &mut config::TrelloBSTAPIConfig,
+//                       config_path:          &mut config::TrelloBSTConfigPath,
+//                       ci_config_output_dir: &mut PathBuf,
+//                       is_using_config_file: &mut bool,
+//                       is_api_setup_failed:  &mut bool,
+//                       is_file_create_fail:  &mut bool) -> (){
+//
+//    ci_config_output_dir.push(".travis.yml");
+//
+//    //Get access token / API key
+//    let status   = utils::StatusPrint::from_str(term, "Setting up the Travis-CI API key.");
+//    match setup_api(term, is_using_config_file, config){
+//        Ok(_) => {
+//            status.success(term);
+//        }
+//        Err(err)                  => {
+//            status.error(term);
+//            writeln_red!(term, "Error setting up the travis-CI API key: {}", err);
+//            writeln_red!(term, "Configuration file won't be used...");
+//            *is_api_setup_failed = true;
+//            return ()
+//        }
+//    }
+//
+//    if *is_using_config_file {
+//        match config::TrelloBSTAPIConfig::save_config(&config_path, &config) {
+//            Ok(_)    => (),
+//            Err(err) => {
+//                writeln_red!(term, "Error: {}", err);
+//                writeln_red!(term, "Configuration file won't be used...");
+//                *is_using_config_file = false;
+//            }
+//        }
+//    }
+//
+//    //Get repo tag & public key
+//    loop{
+//
+//        //Get repo tag
+//        let mut repo_tag: String = String::new();
+//        get_input_string!(term, &mut repo_tag, "Please enter the repo you wish to get the .travis.yml for in the form of user/repo: ");
+//
+//
+//    }
+//}
+
+//pub fn setup_api(term: &mut Box<term::StdoutTerminal>, is_using_config_file: &mut bool, config: &mut config::TrelloBSTAPIConfig) -> Result<(), &'static str> {
+//
+//    if config.travis_access_token.is_empty() {
+//
+//        //Get github token
+//        let mut github_token = String::new();
+//        get_input_string!(term, &mut github_token, "");
+//        if *is_using_config_file {
+//            get_input_string!(term, &mut github_token, "Travis-CI currently uses a GitHub access token to authenticate and generate an API key,\n
+//                                                        please log into GitHub and go to https://github.com/settings/tokens and generate a new \n
+//                                                        token and input it here. (Note that once the Travis-CI API key is acquired, the GitHub \n
+//                                                        access token can be deleted.): ");
+//        } else {
+//            get_input_string!(term, &mut github_token, "Travis-CI currently uses a GitHub access token to authenticate and generate an API key,\n
+//                                                        please log into GitHub and go to https://github.com/settings/tokens and generate a new \n
+//                                                        token and input it here: ");
+//        }
+//
+//        //Convert github token to travis api key
+//        let mut api_call                = format!("https://api.travis-ci.org&github-token={}", github_token);
+//        let mut response_body           = String::new();
+//        let mut header                  = Headers::new();
+//        let mut content_length: Vec<u8> = Vec::new();
+//
+//        content_length.push(20 + github_token.len() as u8);
+//        header.set_raw("User-Agent",     vec![b"TrelloBST/0.0.1".to_vec()]);
+//        header.set_raw("Accept",         vec![b"application/vnd.travis-ci.2+json".to_vec()]);
+//        header.set_raw("Host",           vec![b"api.travis-ci.org".to_vec()]);
+//        header.set_raw("Content-Type",   vec![b"application/json".to_vec()]);
+//        header.set_raw("Content-Length", vec![content_length]);
+//
+//        match utils::rest_api_call_post_with_header(&api_call, header) {
+//            Ok(_response_body) => response_body = _response_body,
+//            Err(err)           => {
+//                *is_using_config_file = false;
+//                return Err(err)
+//            }
+//        }
+//
+//        let data: Value;
+//        match serde_json::from_str(&response_body){
+//            Ok(_data) => data = _data,
+//            Err(_)    => {
+//                *is_using_config_file = false;
+//                return Err("Error parsing the response.")
+//            }
+//        }
+//
+//        //TODO: Better error reporting
+//        config.travis_access_token = data.as_object().unwrap().get("access_token").unwrap().as_string().unwrap().to_string();
+//    }
+//
+//    Ok(())
+//}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
