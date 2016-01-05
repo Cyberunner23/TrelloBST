@@ -1,5 +1,5 @@
 language: rust
-sudo: false
+sudo: 
 
 os:
   - linux
@@ -12,7 +12,7 @@ install:
   - curl https://openssl.org/source/openssl-1.0.2e.tar.gz | tar --strip-components=1 -xzf -
   - ./config
   - make
-  - make install
+  - sudo make install
   - cd ..
 
 script:
