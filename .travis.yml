@@ -33,6 +33,10 @@ after_success:
   - message="["${TRAVIS_BRANCH}"][Travis-CI]["${TRAVIS_OS_NAME}"]["${CXXCOMPILER}"]:%20#"${TRAVIS_BUILD_NUMBER}"%20PASSED"
   - data="name="${message}"&due=null&pos=top&desc=\[Build\]:%20"${buildLink}"%0D\[Logs\]:%20https://travis-ci.org/Cyberunner23/ProjectUnknown/jobs/"${TRAVIS_JOB_ID}"&idList="${TRELLO_API_LIST_ID}"&idLabels="${TRELLO_API_BUILD_PASS_ID}"&token="${TRELLO_API_TOKEN}"&key="${TRELLO_API_KEY}
   - curl -s -o /dev/null -w "%{http_code}\\n" --data ${data} https://api.trello.com/1/cards;
+  - echo $TRELLO_API_LIST_ID
+  - echo $TRELLO_API_BUILD_PASS_ID
+  - echo $TRELLO_API_TOKEN
+  - echo $TRELLO_API_KEY
 
 after_failure:
   - if [ ${TRAVIS_SECURE_ENV_VARS} = true ] ; then
