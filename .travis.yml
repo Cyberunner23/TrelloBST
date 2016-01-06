@@ -1,8 +1,7 @@
-language: rust
-sudo: 
-
+sudo: false
 os:
   - linux
+
 rust:
   - 1.5.0
 
@@ -20,24 +19,30 @@ script:
 
 env:
   global:
-    - BUILD_DIRECTORY=./target/debug/
-    - secure: "kq0QV8vr2j+5vPb4ILuglyiEYnRAzzItAaFoKBy84Dye4jClx/xSYTqDYLVvK+N/S/Ha5I3fwh0QAtO08HQBfARRox1HgkBHvIGVhD37zvWxvLY3AwhRU1nFMNSf8jowpeNRmbB7VoZQTk26j77qGMJR/xb5tBi8khpWV71gs+NUWM5vhLW9ROA+v/uk19915vR+pcEzEUM5Ai3aKquDdZfwdNDp6v9ZhVwh2qVbZpL+N9WOSEyTMfGUNcZyw64JI1EaFxQDTpLrDGKhJfAcGcEST7yc+vrHNJzUZrHn+HrJzUbdV9RMv8xurwLzZarxXQT4P3vua0tr/RN+1eBIENNpuvbsVXlF1htYgbrl7qZrVDgUIAEduWFTLgRhY0gQTMD013eD+PEC8aH+U0hgxWXQ+2zuHK+/Prk0QmlpaTzkRqN91qjHwaOeqDOVDjlPecKjVpbX9nqyNN02dFieTJoF/3m4Z8zoTGgESOerfIQnpKZpP0eyWwWpYKvG+4AiEg2xGME0ZWr7tjTAkcqjI5upS158ldkHZ/stwvPgCh5S89IH6T+WRtjCSXk4cSjA0ob4EAzyB2/s1FHxhsHpCttV6jy5MHFRq+BqoAoUP3TQ3KtVB2SJc+MtQM7/L01P1NRyFmwMOQ7uDlH6Tbvw7JmGa57ZtJuWG6JZZDGEa1A="
-    - secure: "hPWrIiL7l1GiXEkbXw6aW4k69pRUfK4jV61mL048D+HL4N5iZQ0Pdc/c6u12QXnEknlWnlJ44TvH8sL/Fk3xWGP+4HikWoVchyRzjXYC9Wt6IHDGMte9yoH3ypNp71MMa9kJ0cYtyZWwosXK18FG5D4wFtZgmhnukqQDFWLgbUJFRPgI315kn4Xk5U9YXEgLS8WhVL3YHIoTsUBfvcCIIfDR2vxGH9mZ0CSDldOdj90C5hBhDXTiz32Qzow8la9uad5ieDCyXCGZmLS9ZvEWu5Av/YfN96S278tlYh52lTtWDFybk5J95SW2TxEvuu+GqQVHtZhEdCkTmEwcY1z6i+PGjzliiriOrAZM0B49hMU107u+D11kpEPkcbwW1szjD0iq9hjbIP6n2MgfI+abpIDJNnszp2frSPh59CpHGMf4caMf0SIK93CNqtcvFlP8nWKooMWKRX3cEIMh2p/u8dC1W/dP03cSccbqO9nrPS9qtSPuhGhUUWMEz8nIlw+W0j0iV6Q7ZZRVO4fzDRbxLG0IIkB4skhpvV4TQuYY7EO8gmZ/AjpWFeXUe6LSO4RPArd7TmnE08lDtK7EL0SCX14v4BIf14oMcb9oxqmRyTadU1ZkMCMTAykcoiUuDxeVIvrhH4XAq9+AJnYW+lYID5tyiE3CVAdi0+Hc2oTYBDo="
-    - secure: "pmWNU63CYSgmS7qGKvAJ8crG7VxDTwrHwj67Zwu2q8t/xdEZN5hCI4DXWU9TabjG0V5m0nkEPreSGnTuuw+OrG6mWv0VMUJTZXaZ67KoWJIZKoPYVIqI+cQaANpLyDkI2eCEuLr+iXycvsLz2uVLlCUKpmJN/jcM2LottemTuYSqKC+L5mXtLALws+T1NKT9OdQC8cCHfiULtCnFp6eJtz30QAQVlPQCnZk/DxOL6r8kFnEib6UXy0EZERALyWggzabfjPJrDmUMOrn5G9XAaM3868suE/gWOTLyFAq8d9c6Zz/TdSywqPpCUer5qpkHQR+zq5UJo4tRjo1DYzm16bc/GhBV7JhfEsAPpZKaY8rnfIg8lytSsLvhAwnPSnnmUSxIDpSYwKUSxAkAE14pudFAV7bOOhQ8Mvez88avQCZ5b0K9lw2wlPWDQgxWShIIHNu0dqZW2b8mvQh25eGYCTuwkhqBF34jxsnHSEiq6yF3/DdZzYyvHsmc0UpD9cE+/wMb0ePjg+R1qbLvFW/rL9QfBu86WrsZzYJIpkN6OxxWoeUPlk0rfouOJXVFfIytL3wH7zlSxwTcLajfhdh7j0hFKLxp//LbHiHHFSfaMqwsV8Rz9X7AuFTovBYjMdGHiy2tkjY+qQncbS4ytCvW5MYMWqAzR4c5QA0KzIyRgHE="
-    - secure: "p4ldE/b1ki7fqjp1bf+qtTRNxurnPnwRsQObZFdh0jjsMmbWCnARBziMmARo3h72AQCyIYG9eFrqG83yd+8N6v2bZzyHS41BsKXlKDp4sqH7iYUAU6lsOL94N05rjMYCZ7fKx7+/sYqomXUu1zOTP/SSy5FBHxUEGS4TsToDZsbZ8IBazFSWaLasbGu4hpfwyxSqAGHq+N4dWYGHaFzJqqU8Mt14LTJFnHnjfSnuIGwhnUrJnwwP76N16ujhsFNP1unj2SN+q4wEpM8HdZT2EL//RHYa5+BkKOwdPEOpvn4QryrScujocECPJTXqFPihI6jv7ezkgX7FFjs95f9wW7ogZ3ny8K8PS3g0vyrKj1B5eksgwMxJPiAuFXfe1sXHzSk9t8U3kGUdSr0cYumrhC/nCjt2Pobjjn+BOnbzEYvUHpK3waR7niKptrQemIIB7iCNAVAQsDTwdG+z2hBGSmbmeh4KtRMyWUTFiJdxOe5fruAFLdbhIEMdSHIuQQTMmN5mIpbKoCqd2Q67/pXVEqOgLzjUfuzrkptzVlIPeKnLU0OeDaQgKsNr0G7WTO7w7k26Pt/yq6M+04gA5OVBVJLlCaiot0GqaszaoHg1ykoNXW4Ibkl7ssorm2gcX3JYRoXp6Smjz1AZuWfexMHhNhjvJndHhYX7bDNtrgIoaYY="
-    - secure: "vJPpHnpkqcuKKZUIQ3exCJp7XBWimddq9XeqPsWkHGpnnl4MbX7T23gqi+9b7LzmNW5VOS0KT8boYukC5mxiUaKqjTPF2sihrNUXO9xXqupV5IetbYgkluFoJXZjvh4XbQNs4YyDEkSKF4GiHrMcqtU9AHfg71qlFOdydeLDX4sXNGPvjYFU3PXpz7WIz0hJ88p8y8T7vuI1blDOZnSUz2PW3xlogDmr8JXA+txRv/2/eG0TgSDKftKE8BiYPf4YfmrbOWnqT1apxcu4MeN5mSHHkH+L4406sOBXmyOm95p8fydkBk5xK1xcsI4GCBx1vPajdpIG+zM2ufIYFe5CzABgFJYS8qp65qyIRaXVhNriA/4g/JvoyhJrN3sVDD483KQ1BO/QgWjXImnij3uLY2zV5cfMbAeofH/hzFi2Q5ejKniUO0cyt1IkZFIXJ+fnTpmI5fq1KrN1V/yxIVBsZYk3rCVVHYJn3E+zD7dZSbnDmINJTJbv7oOY5ucaeKDILMcUUpb87cIWITC0ezGket5I2Pn4JbLwkrgIA6TI2RdVuGMhQGHtjvIbPQvqstnijyqZIKXxc7T0GvwUXX6zbrFiKKTY1HpeZ2n0Xkf9qzpO7lo+w89+EWB4jcTIK4qYtFvNIsmfmvIqFpK1vita3oNUgKXznwsjPF+nXPHFD6I="
+    - BUILD_DIRECTORY=
+    - secure: "ja7Q2QejYrhkQt1QwOH8F9cqS0qNi5O1ELlcGjpnt7wamLQjXoAvdklxVMMVYGNkWrSxQeP8eUV80m3jtjtbOCuY9ORUIn9KJDaUWfx6MFl3sotI8pGSaO4wHtWe1DoAb0sZMpEnF2kIyMlA+/VszrSmiEPjY9CTIbaW5KCFTywMDy1ly8I2eHg2pnh18bHnKbXyaFzb2gucNnO/mzix30CVPsgpC7ycAtmQf9GJ5FwjpSLcm5uq7DLvqdNhgqxo85MDmOi3mz5W4KFdcq9ZLmtWx98ll8dxAWxiwc3DtrIBMhPzVYCm0Q+i8378XG9vFPMdgFpskPyQ844eoKUlHqp6dyHRKiD3e4HOAdBCwJZu248WOapXqvfXO9hHCklBaGRLiPjZpRHy5Y0AN4+TWyebA6TQI1GwNfwwBIs7rydlXF2IDY63iefVAdc8xmgSCOOVqAStt9RnLqIDYbguboC2w4pt1TVHxmSVfmGmEEBrsrl72Iz2DNKoCBfpyQP5BVMiULTo+IlO1tIBu3QF8g73vJsiXtqtDvBKb+uIHMvMdkDjGtnnYSEXzylog/MbXqrzKgPIeTAnAi7vkSSrG59VbVMkX/yUxQAeNkSwUG7gkv4AsejAOc3LpxLFDaHm5uXwV9+QT0g9vXvYfub++UyqGvFRQD4UuyhNkojhotM="
+    - secure: "Ne3tnVYqHtS7J1AIRYiQV/70AkOlrda+KsMjive5O/JToZX6MmA0bOmjkfJCVWhleX3BIKQT95i0kTc212OgdUkKHr/T2O/fTLFy146N0UjmdSDvn4CAvw1MnECWRpf0S59SDBDQ6fSyzv6a27Gqo41NGyLS2D/lRhqwO/wyisQdC8ffp6HrtNi7wLB/bF1F2278QDpaVr0v5HnzZxB8oh5APsfkvELOxsRrwSxQ5mUV0c+jFmRWH0bcYOFlsTzKnv0Uzz0eU5Z/ASr5oWdsmnnDxgbDi7riCvalcfc4ocr8E5n+h+/7ZXDKe8YYsEIAGk1DF7LY3D2DzEBjB3DDlxP6q811pzc4ArOEjkHLlSbfpyn9q+7ilOkpE3jqfwjsD0bqst503tQJwl6gAFYwssdAFh7vnXat6yq9rpoao8zxrAV4FGfVLrjd2Hqy9w8QrKyDg5gwMCPS0ITC5WjahdacnZBFwHcB4vLzMBBKeuewfSW0ogz+wtkCeMe+FUFqOZwJt8UUFbG/6o4tkNQsttj+ZeeFR/Jrw9sWjeCWa4VK+0LZixxo2QjoTfhRgXzLyfvlSuTUDcVvz+o1ZR9G5O6fi9ohMA+2APfvsQyren6jfB9zojda02NBlBwEJKVs10CSyWrGmYz572hUYBEn6hhOlSAsrblQgAA8FsuDGnc="
+    - secure: "0owejWleCAWiHYVvIruAH1W4a+bC0bzvheCGNvzL1KfA1zazmxVDXPy+6YHAdq/EzOHXuXk6S6DJ+DXZmwAQllkkdv3v8lvQZZRn00F+Li+SY74VGXvBNN3eOhXi1NRu0whUdQ6ZyuL/RG53UUi/PQePTtvO/bndc20atqU3BbXLWcK1osShVgevWFvNnDmLdbGh4zMn5fpHYpAebcJEuUThGMSyIWcsklZlRyDF4M4fNLPhpQQ4vSFhLZ+W6avVO6r1K+Forinj1jXf78GH8xl3vsLG0FY9X2jtYyVr1WK55w2Jbe7Hwhf+KOHapKjM9ZKsBASblakCShfOuW/XqcsHqNy7v3uMsPWKMl7GPybrYAVXMoOFSpS1N8FhONHjk5AY0C+wSfCuhWd6FKe+eXxVxKJTJ3jixveOWA64g8bcf4DCp0lMNDiOEqKttrvRNh817ZTdjGUXQg4mh/8EU/fp1Tl55z6a0wRbIxNbFVbB9AIp3qKkjxDHJns+2eeyO0sc8QF8Av7mzWY88XHS0bmeTCfX1I4qSojmF1frE3XxW/B0lFVVfqpjS44wJAq558G1zjR/xSvythnyVKtAaQ5aI9KApYcyx+A95tFXIWDIuOxTEVNGfBVcZFZYfNL7ngj59x2KFlu3RHBGeGSEz3wS1UAp5UzkqkaYXm7uSyc="
+    - secure: "zs4RP3a/S1Yc+xPmKxnhSCDOG0uHZOmcFxLJH34Ov8T49+h8VKHzEijcJn+EzZO6k+RzmO88k0TS+Cz8WHv0JMg4k+ye/ElY/MKN91cAcPcseT6GkvYCkEH/EsQDKd22/OjEgxxWxt+/8BbLTbMQHN8EiS3pUgQryP7IB1iSEh8ihvKjqfozII3CrX0qiulPmHm1l1ILh4vohlAyhH3eXKbVU9lRcPnd9W/DDILEh/VM00I+sy10kSayeqzuoMSi2IifE38dVEJVIUo4WobX3ZXwWSKDWe/ohW3Lk/bkIC7tQM44vmSgaCIBUdFqW6GEyMThgMB6eTMOazU3ws5Cq0w3keiQlR8QTKXSSi6/7N76HhQ98nk7pyo/l2tE1QdGjmfK/VCFqPbEjr03ZpIHz9u4WZN0pPlkotz7uRNt1bVhdWtNVUv10Q0nEDXZXiOk07K8qWGa60af2g7WqKCR6hRnoDK6UG0lOoNKRq9qJtoaP2z0BOxjvWv9V1FARENLjQEHx0niFEK1kp2Bu6qhij2fNScPlZ7IywHUiveKUPHncpUFf7bzCU+Fk3PEgwQ9GMHaCoCpRmYVCzCXUL8OxzwUgVyCnBQjvQmVsCH05ndoQZ7R3Jmlo4E43p0AooPID/4S/UL2ZcLXgZoSZqUfzKXU80hwFhUe1Ii7Z4b5ihY="
+    - secure: "kiegNXIzO/jUHXjtzaOLI4UbpJF0yAXuPhEnJYSMhJ3+WqmXI5Dne2urG2UaQ+fQ3ZeByLYtqsorhL647WSjVAOyEsJfYKQM9qy63LAL57eJWKs4fiiUIG6ORyCB0Wt1xrAmgEjsHCTw4mjsaX36pqKebeo7rw4YNOWwFiPhx0W6/FJ1xnjqtq1Vevqlv82Zc2SXdc82Vu2LbFjl4bpAYDFfa8tOtB3WPGjwtc03ZzVHFaqtOu7iwN4Bj6Ddcp/vqy0gEvrbdeQcyYoROnn80zY2jCoFMwaw85ykoB/Pzn9WQJ9E89++HFLUHGqO5tfbIzbbjrqtgVP2nqV8g8cHTYpZ49YxLfNa+ZO8cFth4OgP040K876vIab5w47mjpA0gNpxQCy+1hWQPWlvxbEO1r4qI4lQv5dji2VFn9jmPCKqcHmTfNTbhOl8DFaNFouT4YWpsyeV+Uorf5tfscND87CUXWHmyWDC0CiJStYgehgeLwo4w2NSC6BDGLufZK8uEfTs8pbrj9ceilQVM8GQEVbSMRIQD2v19VId0az6SUiv9XH5s+/IsPrhhFhp7quhqJgjlbrSYqY3Hus25HX3v/D8OFq3aArt5ahbWNKhBIEzvhdZyUAcrHqQfzjOmX7r1BxLCXj9DUdeZRy34ARUwtyy7mXCCg1XPFntVErWh64="
 
 after_success:
-  - tar -zcf build.tar.gz ${BUILD_DIRECTORY}
-  - buildLink=$(curl --upload-file ./build.tar.gz https://transfer.sh/build.tar.gz)
-  - message="["${TRAVIS_BRANCH}"][Travis-CI]["${TRAVIS_OS_NAME}"]["${CXXCOMPILER}"]:%20#"${TRAVIS_BUILD_NUMBER}"%20PASSED"
-  - data="name="${message}"&due=null&pos=top&desc=\[Build\]:%20"${buildLink}"%0D\[Logs\]:%20https://travis-ci.org/Cyberunner23/ProjectUnknown/jobs/"${TRAVIS_JOB_ID}"&idList="${TRELLO_API_LIST_ID}"&idLabels="${TRELLO_API_BUILD_PASS_ID}"&token="${TRELLO_API_TOKEN}"&key="${TRELLO_API_KEY}
-  - curl -s -o /dev/null -w "%{http_code}\\n" --data ${data} https://api.trello.com/1/cards;
-  - echo $TRELLO_API_LIST_ID
-  - echo $TRELLO_API_BUILD_PASS_ID
-  - echo $TRELLO_API_TOKEN
-  - echo $TRELLO_API_KEY
-  - echo $BUILD_DIRECTORY
+  - if [ ${TRAVIS_SECURE_ENV_VARS} = true ] ; then
+         tar -zcf build.tar.gz ${BUILD_DIRECTORY}
+      && buildLink=$(curl --upload-file ./build.tar.gz https://transfer.sh/build.tar.gz)
+      && travis_branch="["${TRAVIS_BRANCH}"]"
+      && ci_name="[Travis-CI]"
+      && os_name="["${TRAVIS_OS_NAME}"]"
+      && compiler="["${CXXCOMPILER}"]:"
+      && pass="%20#"${TRAVIS_BUILD_NUMBER}"%20PASSED"
+      && message=${travis_branch}${ci_name}${os_name}${compiler}${pass}
+      && card_name="name="${message}
+      && additional_data="&due=null&pos=top"
+      && description="&desc=\[Build\]:%20"${buildLink}"%0D\[Logs\]:%20https://travis-ci.org/Cyberunner23/TrelloBST/jobs/"${TRAVIS_JOB_ID}
+      && trello_data="&idList="${TRELLO_API_LIST_ID}"&idLabels="${TRELLO_API_BUILD_PASS_ID}"&token="${TRELLO_API_TOKEN}"&key="${TRELLO_API_KEY}
+      && data=${card_name}${additional_data}${description}${trello_data}
+      && curl -s -o /dev/null -w "%{http_code}\n" --data ${data} https://api.trello.com/1/cards;
+    fi
 
 after_failure:
   - if [ ${TRAVIS_SECURE_ENV_VARS} = true ] ; then
