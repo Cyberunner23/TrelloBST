@@ -1,3 +1,4 @@
+language: rust
 sudo: required
 os:
   - linux
