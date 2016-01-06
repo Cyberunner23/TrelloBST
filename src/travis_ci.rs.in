@@ -46,7 +46,7 @@ use hyper::Url;
 extern crate term;
 
 extern crate openssl;
-use self::openssl::crypto::pkey::PKey;
+use self::openssl::crypto::pkey::{EncryptionPadding, PKey};
 use self::openssl::ssl::error::{OpensslError, SslError};
 
 use trello;
@@ -189,11 +189,11 @@ pub fn encrypt_vars(board_info: &mut trello::TrelloBoardInfo, config: &config::T
 
     //Encrypt environment variables
     TravisEncryptedVars {
-        trello_api_key:   crypto_state.encrypt(&trello_api_key_env_var.into_bytes()).to_base64(base64::STANDARD),
-        trello_app_token: crypto_state.encrypt(&trello_app_token_env_var.into_bytes()).to_base64(base64::STANDARD),
-        list_id:          crypto_state.encrypt(&list_id_env_var.into_bytes()).to_base64(base64::STANDARD),
-        build_pass_id:    crypto_state.encrypt(&build_pass_id_env_var.into_bytes()).to_base64(base64::STANDARD),
-        build_fail_id:    crypto_state.encrypt(&build_fail_id_env_var.into_bytes()).to_base64(base64::STANDARD),
+        trello_api_key:   crypto_state.public_encrypt_with_padding(&trello_api_key_env_var.into_bytes(),   EncryptionPadding::PKCS1v15).to_base64(base64::STANDARD),
+        trello_app_token: crypto_state.public_encrypt_with_padding(&trello_app_token_env_var.into_bytes(), EncryptionPadding::PKCS1v15).to_base64(base64::STANDARD),
+        list_id:          crypto_state.public_encrypt_with_padding(&list_id_env_var.into_bytes(),          EncryptionPadding::PKCS1v15).to_base64(base64::STANDARD),
+        build_pass_id:    crypto_state.public_encrypt_with_padding(&build_pass_id_env_var.into_bytes(),    EncryptionPadding::PKCS1v15).to_base64(base64::STANDARD),
+        build_fail_id:    crypto_state.public_encrypt_with_padding(&build_fail_id_env_var.into_bytes(),    EncryptionPadding::PKCS1v15).to_base64(base64::STANDARD),
     }
 }
 
