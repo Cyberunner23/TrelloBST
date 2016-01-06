@@ -158,8 +158,7 @@ pub fn get_repo_tag_and_pub_key(term: &mut Box<term::StdoutTerminal>, ci_config_
         if is_api_call_success {
             let mut buff = Cursor::new(repo_response.key.as_bytes());
             let mut thing = String::new();
-            //PKey::public_rsa_key_from_pem
-            match PKey::public_key_from_pem(&mut buff) {
+            match PKey::public_rsa_key_from_pem(&mut buff) {
                 Ok(_crypto_state) => {
                     *crypto_state = _crypto_state;
                     break;
