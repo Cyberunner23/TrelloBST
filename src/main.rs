@@ -27,9 +27,8 @@
 use std::env;
 use std::error::Error;
 use std::fs;
-use std::fs::Metadata;
 use std::io::{self, Write};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::exit;
 
 
@@ -104,7 +103,6 @@ fn get_ci_config_output_dir(term: &mut Box<term::StdoutTerminal>) -> PathBuf {
             }
         }
 
-        let mut dir_metadata: Metadata;
         match fs::metadata(PathBuf::from(&option_string)) {
             Ok(metadata) => {
                 if metadata.is_dir() {
@@ -180,7 +178,7 @@ fn main() {
         Ok(_config_path) => {
             config_path = _config_path;
         }
-        Err(err)         => {
+        Err(_)           => {
             is_using_config_file = false;
         }
     }
@@ -280,9 +278,6 @@ fn main() {
 
     loop {
 
-        //Get Travis-CI/Appveyor config file output dir.
-        let mut ci_config_output_dir = get_ci_config_output_dir(&mut term);
-
         //Print options
         println!("For which continuous integration service do you want a configuration file for?");
         println!("[1] Travis-CI");
@@ -299,18 +294,27 @@ fn main() {
             }
         }
 
+        //Get Travis-CI/Appveyor config file output dir.
+        let mut ci_config_output_dir = get_ci_config_output_dir(&mut term);
+
         //TODO: Major cleanup, this is a mess....
         match option {
             1 => {
-                travis_ci::create_travis_yml(&mut term, &config, &mut board_info, &mut ci_config_output_dir);
+                match travis_ci::create_travis_yml(&mut term, &config, &mut board_info, &mut ci_config_output_dir) {
+                    Ok(())   => {
+                        writeln_green!(term, ".travis.yml creation was successful.");
+                    }
+                    Err(err) => {
+                        writeln_red!(term, "Error {}", err);
+                    }
+                }
             },
             2 => {
+                //TODO: Set Appveyor config values and save config.
                 let mut appveyor_yml_path = ci_config_output_dir;
                 appveyor_yml_path.push("appveyor.yml");
                 //TODO: Setup AppVeyor API Key
                 //TODO: Create appveyor.yml
-
-                break;
             },
             3 => exit(0),
             _ => {panic!("An invalid option slipped through...");}

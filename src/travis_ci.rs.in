@@ -24,10 +24,9 @@
 */
 
 
-use std::borrow::Borrow;
 use std::error::Error;
 use std::io;
-use std::io::{Cursor, Read, Write};
+use std::io::{Cursor, Write};
 use std::fs::File;
 use std::path::PathBuf;
 
@@ -36,18 +35,11 @@ use config;
 extern crate rustc_serialize;
 use self::rustc_serialize::base64::{self, ToBase64};
 
-extern crate hyper;
-use hyper::Client;
-use hyper::client::IntoUrl;
-use hyper::client::response::Response;
-use hyper::header::Headers;
-use hyper::Url;
-
 extern crate term;
 
 extern crate openssl;
 use self::openssl::crypto::pkey::{EncryptionPadding, PKey};
-use self::openssl::ssl::error::{OpensslError, SslError};
+use self::openssl::ssl::error::SslError;
 
 use trello;
 use utils;
@@ -72,6 +64,7 @@ pub struct TravisEncryptedVars {
     pub build_fail_id:    String,
 }
 
+#[allow(dead_code)]
 #[derive(Deserialize)]
 pub struct RepoResponse {
     key:  String,
@@ -82,18 +75,6 @@ pub struct RepoResponse {
 ////////////////////////////////////////////////////////////
 //                         Impls                          //
 ////////////////////////////////////////////////////////////
-
-impl TravisEncryptedVars {
-    pub fn new() -> TravisEncryptedVars {
-        TravisEncryptedVars{
-            trello_api_key:   "".to_string(),
-            trello_app_token: "".to_string(),
-            list_id:          "".to_string(),
-            build_pass_id:    "".to_string(),
-            build_fail_id:    "".to_string(),
-        }
-    }
-}
 
 impl RepoResponse {
     pub fn new() -> RepoResponse {
@@ -114,7 +95,7 @@ pub fn create_travis_yml(term: &mut Box<term::StdoutTerminal>, config: &config::
     //Get repo tag and public key
     let mut crypto_state = PKey::new();
     let mut repo_tag     = String::new();
-    get_repo_tag_and_pub_key(term, ci_config_output_dir, &mut crypto_state, &mut repo_tag);
+    get_repo_tag_and_pub_key(term, &mut crypto_state, &mut repo_tag);
 
     //Encrypt Variables
     let encrypted_vars = encrypt_vars(board_info, &config, &mut crypto_state);
@@ -124,13 +105,13 @@ pub fn create_travis_yml(term: &mut Box<term::StdoutTerminal>, config: &config::
 
 }
 
-pub fn get_repo_tag_and_pub_key(term: &mut Box<term::StdoutTerminal>, ci_config_output_dir: &mut PathBuf, crypto_state: &mut PKey, repo_tag: &mut String) {
+pub fn get_repo_tag_and_pub_key(term: &mut Box<term::StdoutTerminal>, crypto_state: &mut PKey, repo_tag: &mut String) {
     loop{
         //Repo Tag
         get_input_string!(term, repo_tag, "Please enter the repo you wish to get the .travis.yml for in the form of user/repo (Note that it is case sensitive): ");
 
         //Public Key
-        let mut api_call            = format!("https://api.travis-ci.org/repos/{}/key", repo_tag);
+        let     api_call            = format!("https://api.travis-ci.org/repos/{}/key", repo_tag);
         let mut response_body       = String::new();
         let mut is_api_call_success = true;
 
@@ -157,7 +138,6 @@ pub fn get_repo_tag_and_pub_key(term: &mut Box<term::StdoutTerminal>, ci_config_
 
         if is_api_call_success {
             let mut buff = Cursor::new(repo_response.key.as_bytes());
-            let mut thing = String::new();
             match PKey::public_key_from_pem(&mut buff) {
                 Ok(_crypto_state) => {
                     *crypto_state = _crypto_state;
@@ -197,6 +177,7 @@ pub fn encrypt_vars(board_info: &mut trello::TrelloBoardInfo, config: &config::T
     }
 }
 
+#[allow(unused_assignments)]
 pub fn generate_file(ci_config_output_dir: &mut PathBuf, encrypted_vars: &TravisEncryptedVars, repo_tag: &String) -> Result<(), &'static str> {
 
     let mut travis_file: File;
@@ -276,7 +257,7 @@ after_failure:
 
     match travis_file.flush() {
         Ok(()) => (),
-        Err(_) => return Err("Error while the buffer writing to the file.")
+        Err(_) => return Err("Error while flushing the file writing buffer.")
     }
 
     Ok(())
