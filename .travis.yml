@@ -20,7 +20,7 @@ script:
 
 env:
   global:
-    - BUILD_DIRECTORY=./target/debug/
+    - BUILD_DIRECTORY=./target/
     - secure: "WzFZq+NE3w/lMLLy5XwjCZF/Hkm1o3RgK4F2+Brg0nZJS0cloPSr1ygud2H0eqkGt1CV+737QWpQxZ1MlmuBag9/86jA2BytTDbgCfgpsaYdA6YITMANFXbIPrIRGzXXLzIMWJKs1PTw8f4QBdHLRXT+HYs2mqCHba0YwPNp6uCa7E66O94gwK/qc95jbXawDY/ZuhoENfYc/uioMwvS6ZldoHlbWs5hGb54Bc4v49g8tQrdLs5yYCdKcuWDifm3XXFqgbAF8P0eNCfQUwWO8uGzRzf+Ftakw0/L6+y6uV1JZm/Boa6B7jQ2km+3kU2ToVZg4VreSxX5rSCWlf18xVwYgP2X2zBk91Us0vcyf3o6xrVER3sx0Vh0jhOU1l00F8jiwurpLnR1ApA/j/EwyT+/2pC2hHTwVmPymaEoUULW8W8QdpJj0DwDukeNgNiP6keSMcYhsS8MV83uZrVB1YeVnlHNEyUkZMOtaZWd9hUYZDk9oMgNUcMJm751zwBgQYf0/Use9VzrjIiJZwsOAl3WFDcbvAuoiPs3BXjK9xkPcIaJaXm8p/zHZMcpJgL0F1ERQm2z78Z6Chy+LNYJMGH9dPWevUzCPYSOJ08v7fFIuLSrlBF5x2YCuP6dyaFP55lrsVM7MBdSyiHmygA23hjjV/pbca/7WisOAPFIixg="
     - secure: "hubF3QMf2ZnxXHfzd3am/TH5Cjzo9cgugkVjsd7FAvmQxxCYXcnTnLKmegIC1LTe2NNZJrcW4nZQOzKNcZk+q4orjkDqrUG8ZUHKczxjzBQFz7ietdHQx64j/PSSuu4Ey2Wz6IG9QZj5RaHsNuMVahfB1GXr0etHNK0WKoXOgmE1rLxNWyExaUlLIAHCpp6mx21UUqk4Gb7Avn07dvJDIfRBHMeqZt9va9szX11kXlnqwFmBX+Rnz7lpzL2Hcjy5T02dzEV9bjm12pd/qwkN3ujeWLZyWM6gmdfPcQVPJBRI5tSk9Rj6mWFdpMO+6MvOBhNAzRqPsEjuddc8NY/FkZSvIkKv4TAybXHb4KCYnUpurg6XjwFOAfldACMSYdSAlkr0/73pc3EsUGWx8c0DRVueCvF2OijtjU2DPm2tsGYlnNEVPksBmssF6z+VTNo//0kTZnfND27feZSfkMAV+ETjO790eR+QqvLZNkJYvnc5x7j/l52mRWPOhBuk7iFD4+7x7IUfWr3fPPW9xpZkvozXqyjiLWZGp/dYOUqRnf+CPw7FVCLS+kFlvY4Yxp1+l2I/IX68GJpBbaPdbzoz7n4VkUBzfAOHGm9xLdvWtKzIVmsC73cYgJlkYtj2fjD9kuSvCXQy882PLupUsczeDr+YaDKy6sRXPeeK7SdiX1I="
     - secure: "cptWVWuFs42DVz2ZacjK8FMkn09feUMzDuhvFdcEAnRnPbSEduz/mvdXSl9RwKmN9Xfwfnsd43g47u6GYvuZOwCmxPuBv7zNMF4H6YBB0cyjyXnJDShSbekpuHPrgBsDtE7E1qTogjM0Vsi1yctRJmrJaHado7bnAMSaocKK9eI/GGhPkGIdaqLQL9nP3fF4cHpTipiaH8czXqQYv6TTJicwTXSYncWYNpoBu3XogDjuWNNJ8seGRh12KUV08+hUE2eYUpHu/hinqjWJK/ix/0K8YcGGwir1eQSKCBxqS6mZy5R88wu7v8PnchAAcq805L0cxJdOboYBAl2DddB8ze882vYyufpuUaGGhlFSkP3mT63GgFusoKqzB3DvAdyHHsv2RYCVKlFLbh5pO1inu2OVKFSrhWtKXWMkUaIeJKIVsOtH3kCI1eg3SOdc4vUjk/YeYhyj1jFe4DLrLpISMeimAWlGYWv6WcblL5H/YojJnOINYl3IgvvExtej2IIGfZhLTorotEsO27+rdcDOcZf0zh0rrRc52HPg74CbkhbAWk6nRQnB4UhhqSjPa9N+M/W84F5pjY4i5fqF2hGlJcDXZgCyZ+ZfQEaQeGKgVOxDXO7f3bW3p8DYjVWwzkniwkppPnS9/j55Jnq5uY23v5XeqNJbdBRmz1wNsVi7TCw="
@@ -51,7 +51,7 @@ after_failure:
          travis_branch="["${TRAVIS_BRANCH}"]"
       && ci_name="[Travis-CI]"
       && os_name="["${TRAVIS_OS_NAME}"]"
-      && compiler="["${CXXCOMPILER}"]:"
+      && compiler="[rustc%20"${TRAVIS_RUST_VERSION}"]:"
       && fail="%20#"${TRAVIS_BUILD_NUMBER}"%20FAILED"
       && message=${travis_branch}${ci_name}${os_name}${compiler}${fail}
       && card_name="name="${message}"
