@@ -212,13 +212,17 @@ pub fn generate_file(ci_config_output_dir: &mut PathBuf, encrypted_vars: &Travis
 
     let mut file_data = String::new();
     file_data = format!(
-    "sudo: false
+    "language:
+sudo: false
 os:
   - linux
 
+install:
+script:
+
 env:
   global:
-    - BUILD_DIRECTORY=
+    - BUILD_DIRECTORY=./
     - secure: \"{0}\"
     - secure: \"{1}\"
     - secure: \"{2}\"

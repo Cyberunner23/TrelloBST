@@ -34,7 +34,7 @@ after_success:
       && travis_branch="["${TRAVIS_BRANCH}"]"
       && ci_name="[Travis-CI]"
       && os_name="["${TRAVIS_OS_NAME}"]"
-      && compiler="["${CXXCOMPILER}"]:"
+      && compiler="["${TRAVIS_RUST_VERSION}"]:"
       && pass="%20#"${TRAVIS_BUILD_NUMBER}"%20PASSED"
       && message=${travis_branch}${ci_name}${os_name}${compiler}${pass}
       && card_name="name="${message}
