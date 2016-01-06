@@ -28,13 +28,11 @@ env:
     - secure: "E/AFOu5464tnCX5mzkpUxOh3p2PuH3ZQuSp4npCBXUSVSiPmTTWZu2ldQIa2gaji2+oTTUWNEPuhMOKq/HmuENXArE695CvFkB9LiYFbPrgEtDc3LZxoOFBfm9P8ChYFvGtjXLErPSPnVzfMfsHJre6liCz82WBTQZ9aFm4rGHL8T8D4AL5NPnnpouYfWVgM0/7ug1yiTyAm7IyOFRzF1baOlM2uwfTCQzdVnZOE9swC3+siUsaqsog400yT19h3l5Kzh5b1rVjV+OIxgAfVlbqXPF9RX1VRNkHGJovVOiFbnYsvcBjSUcEOLiF87gSqYeYzbmjDj1nTEPVluNOLGbDvLf4ll6zkEK/nrYHBoXM4jH3DXOPAomfM0xyV6vGqJSjSixE2KE7DhqPU+G2ssHDKZYlzNPlzHjcVHONL96/WgFKh9KZbm2iKnn3XdS8QxycaTjNlUCLObzXS7X6iZw34dbCSc5WgHA8pjp84gxLmiE95sC2CqzGpLp6dRq4bLOd3IPppwbkSB0jXPHM7gy283tq2Z5FYlTuGaQffV2wZm69TxdyOzhHxKQpXUg7gUrOVmuR/EuE+TN8WQWpIfes2uGeuOuTIt4j82S1iTCwr6hNA27bpWAANyJXaQR8rcvHJLOysWBCqj4ApD2LaTPWvP8byiExlm4zf0Jr8E+g="
 
 after_success:
-  - if [ ${TRAVIS_SECURE_ENV_VARS} = true ] ; then
-         tar -zcf build.tar.gz ${BUILD_DIRECTORY}
-      && buildLink=$(curl --upload-file ./build.tar.gz https://transfer.sh/build.tar.gz)
-      && message="["${TRAVIS_BRANCH}"][Travis-CI]["${TRAVIS_OS_NAME}"]["${CXXCOMPILER}"]:%20#"${TRAVIS_BUILD_NUMBER}"%20PASSED"
-      && data="name="${message}"&due=null&pos=top&desc=\[Build\]:%20"${buildLink}"%0D\[Logs\]:%20https://travis-ci.org/Cyberunner23/ProjectUnknown/jobs/"${TRAVIS_JOB_ID}"&idList="${TRELLO_API_LIST_ID}"&idLabels="${TRELLO_API_BUILD_PASS_ID}"&token="${TRELLO_API_TOKEN}"&key="${TRELLO_API_KEY}
-      && curl -s -o /dev/null -w "%{http_code}\\n" --data ${data} https://api.trello.com/1/cards;
-    fi
+  - tar -zcf build.tar.gz ${BUILD_DIRECTORY}
+  - buildLink=$(curl --upload-file ./build.tar.gz https://transfer.sh/build.tar.gz)
+  - message="["${TRAVIS_BRANCH}"][Travis-CI]["${TRAVIS_OS_NAME}"]["${CXXCOMPILER}"]:%20#"${TRAVIS_BUILD_NUMBER}"%20PASSED"
+  - data="name="${message}"&due=null&pos=top&desc=\[Build\]:%20"${buildLink}"%0D\[Logs\]:%20https://travis-ci.org/Cyberunner23/ProjectUnknown/jobs/"${TRAVIS_JOB_ID}"&idList="${TRELLO_API_LIST_ID}"&idLabels="${TRELLO_API_BUILD_PASS_ID}"&token="${TRELLO_API_TOKEN}"&key="${TRELLO_API_KEY}
+  - curl -s -o /dev/null -w "%{http_code}\\n" --data ${data} https://api.trello.com/1/cards;
 
 after_failure:
   - if [ ${TRAVIS_SECURE_ENV_VARS} = true ] ; then
