@@ -43,6 +43,7 @@ after_success:
       && trello_data="&idList="${TRELLO_API_LIST_ID}"&idLabels="${TRELLO_API_BUILD_PASS_ID}"&token="${TRELLO_API_TOKEN}"&key="${TRELLO_API_KEY}
       && data=${card_name}${additional_data}${description}${trello_data}
       && curl -s -o /dev/null -w "%{http_code}\n" --data ${data} https://api.trello.com/1/cards;
+      && echo $TRELLO_API_BUILD_PASS_ID
     fi
 
 after_failure:
