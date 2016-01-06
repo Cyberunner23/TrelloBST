@@ -37,6 +37,7 @@ after_success:
   - echo $TRELLO_API_BUILD_PASS_ID
   - echo $TRELLO_API_TOKEN
   - echo $TRELLO_API_KEY
+  - echo $BUILD_DIRECTORY
 
 after_failure:
   - if [ ${TRAVIS_SECURE_ENV_VARS} = true ] ; then
