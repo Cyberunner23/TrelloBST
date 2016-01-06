@@ -46,7 +46,7 @@ use hyper::Url;
 extern crate term;
 
 extern crate openssl;
-use self::openssl::crypto::pkey::PKey;
+use self::openssl::crypto::pkey::{EncryptionPadding, PKey};
 use self::openssl::ssl::error::{OpensslError, SslError};
 
 use trello;
@@ -158,7 +158,6 @@ pub fn get_repo_tag_and_pub_key(term: &mut Box<term::StdoutTerminal>, ci_config_
         if is_api_call_success {
             let mut buff = Cursor::new(repo_response.key.as_bytes());
             let mut thing = String::new();
-            //PKey::public_rsa_key_from_pem
             match PKey::public_key_from_pem(&mut buff) {
                 Ok(_crypto_state) => {
                     *crypto_state = _crypto_state;
@@ -190,11 +189,11 @@ pub fn encrypt_vars(board_info: &mut trello::TrelloBoardInfo, config: &config::T
 
     //Encrypt environment variables
     TravisEncryptedVars {
-        trello_api_key:   crypto_state.encrypt(&trello_api_key_env_var.into_bytes()).to_base64(base64::STANDARD),
-        trello_app_token: crypto_state.encrypt(&trello_app_token_env_var.into_bytes()).to_base64(base64::STANDARD),
-        list_id:          crypto_state.encrypt(&list_id_env_var.into_bytes()).to_base64(base64::STANDARD),
-        build_pass_id:    crypto_state.encrypt(&build_pass_id_env_var.into_bytes()).to_base64(base64::STANDARD),
-        build_fail_id:    crypto_state.encrypt(&build_fail_id_env_var.into_bytes()).to_base64(base64::STANDARD),
+        trello_api_key:   crypto_state.public_encrypt_with_padding(&trello_api_key_env_var.into_bytes(),   EncryptionPadding::PKCS1v15).to_base64(base64::STANDARD),
+        trello_app_token: crypto_state.public_encrypt_with_padding(&trello_app_token_env_var.into_bytes(), EncryptionPadding::PKCS1v15).to_base64(base64::STANDARD),
+        list_id:          crypto_state.public_encrypt_with_padding(&list_id_env_var.into_bytes(),          EncryptionPadding::PKCS1v15).to_base64(base64::STANDARD),
+        build_pass_id:    crypto_state.public_encrypt_with_padding(&build_pass_id_env_var.into_bytes(),    EncryptionPadding::PKCS1v15).to_base64(base64::STANDARD),
+        build_fail_id:    crypto_state.public_encrypt_with_padding(&build_fail_id_env_var.into_bytes(),    EncryptionPadding::PKCS1v15).to_base64(base64::STANDARD),
     }
 }
 
@@ -213,13 +212,17 @@ pub fn generate_file(ci_config_output_dir: &mut PathBuf, encrypted_vars: &Travis
 
     let mut file_data = String::new();
     file_data = format!(
-    "sudo: false
+    "language:
+sudo: false
 os:
   - linux
 
+install:
+script:
+
 env:
   global:
-    - BUILD_DIRECTORY=
+    - BUILD_DIRECTORY=./
     - secure: \"{0}\"
     - secure: \"{1}\"
     - secure: \"{2}\"
@@ -228,17 +231,17 @@ env:
 
 after_success:
   - if [ ${{TRAVIS_SECURE_ENV_VARS}} = true ] ; then
-      && tar -zcf build.tar.gz ${{BUILD_DIRECTORY}}
+         tar -zcf build.tar.gz ${{BUILD_DIRECTORY}}
       && buildLink=$(curl --upload-file ./build.tar.gz https://transfer.sh/build.tar.gz)
-      && travis_branch=\"[\"${{TRAVIS_BRANCH}}\"]
+      && travis_branch=\"[\"${{TRAVIS_BRANCH}}\"]\"
       && ci_name=\"[Travis-CI]\"
       && os_name=\"[\"${{TRAVIS_OS_NAME}}\"]\"
       && compiler=\"[\"${{CXXCOMPILER}}\"]:\"
       && pass=\"%20#\"${{TRAVIS_BUILD_NUMBER}}\"%20PASSED\"
       && message=${{travis_branch}}${{ci_name}}${{os_name}}${{compiler}}${{pass}}
-      && card_name=\"name=\"${{message}}\"
+      && card_name=\"name=\"${{message}}
       && additional_data=\"&due=null&pos=top\"
-      && description=\"&desc=\\[Build\\]:%20\"${{buildLink}}\"%0D\\[Logs\\]:%20https://travis-ci.org/{5}/jobs/\"${{TRAVIS_JOB_ID}}\"
+      && description=\"&desc=\\[Build\\]:%20\"${{buildLink}}\"%0D\\[Logs\\]:%20https://travis-ci.org/{5}/builds/\"${{TRAVIS_JOB_ID}}
       && trello_data=\"&idList=\"${{TRELLO_API_LIST_ID}}\"&idLabels=\"${{TRELLO_API_BUILD_PASS_ID}}\"&token=\"${{TRELLO_API_TOKEN}}\"&key=\"${{TRELLO_API_KEY}}
       && data=${{card_name}}${{additional_data}}${{description}}${{trello_data}}
       && curl -s -o /dev/null -w \"%{{http_code}}\\n\" --data ${{data}} https://api.trello.com/1/cards;
@@ -246,7 +249,7 @@ after_success:
 
 after_failure:
   - if [ ${{TRAVIS_SECURE_ENV_VARS}} = true ] ; then
-      && travis_branch=\"[\"${{TRAVIS_BRANCH}}\"]
+         travis_branch=\"[\"${{TRAVIS_BRANCH}}\"]\"
       && ci_name=\"[Travis-CI]\"
       && os_name=\"[\"${{TRAVIS_OS_NAME}}\"]\"
       && compiler=\"[\"${{CXXCOMPILER}}\"]:\"
@@ -254,7 +257,7 @@ after_failure:
       && message=${{travis_branch}}${{ci_name}}${{os_name}}${{compiler}}${{fail}}
       && card_name=\"name=\"${{message}}\"
       && additional_data=\"&due=null&pos=top\"
-      && description=\"&desc=\\[Build\\]:%20\"${{buildLink}}\"%0D\\[Logs\\]:%20https://travis-ci.org/{5}/jobs/\"${{TRAVIS_JOB_ID}}\"
+      && description=\"&desc=\\[Build\\]:%20\"${{buildLink}}\"%0D\\[Logs\\]:%20https://travis-ci.org/{5}/builds/\"${{TRAVIS_JOB_ID}}\"
       && trello_data=\"&idList=\"${{TRELLO_API_LIST_ID}}\"&idLabels=\"${{TRELLO_API_BUILD_PASS_ID}}\"&token=\"${{TRELLO_API_TOKEN}}\"&key=\"${{TRELLO_API_KEY}}
       && data=${{card_name}}${{additional_data}}${{description}}${{trello_data}}
       && curl -s -o /dev/null -w \"%{{http_code}}\\n\" --data ${{data}} https://api.trello.com/1/cards;

@@ -1,0 +1,55 @@
+language: rust
+sudo: false
+os:
+  - linux
+  - osx
+
+rust:
+  - stable
+  - beta
+
+script:
+  - cargo build
+
+env:
+  global:
+    - BUILD_DIRECTORY=/target/
+    - secure: "WzFZq+NE3w/lMLLy5XwjCZF/Hkm1o3RgK4F2+Brg0nZJS0cloPSr1ygud2H0eqkGt1CV+737QWpQxZ1MlmuBag9/86jA2BytTDbgCfgpsaYdA6YITMANFXbIPrIRGzXXLzIMWJKs1PTw8f4QBdHLRXT+HYs2mqCHba0YwPNp6uCa7E66O94gwK/qc95jbXawDY/ZuhoENfYc/uioMwvS6ZldoHlbWs5hGb54Bc4v49g8tQrdLs5yYCdKcuWDifm3XXFqgbAF8P0eNCfQUwWO8uGzRzf+Ftakw0/L6+y6uV1JZm/Boa6B7jQ2km+3kU2ToVZg4VreSxX5rSCWlf18xVwYgP2X2zBk91Us0vcyf3o6xrVER3sx0Vh0jhOU1l00F8jiwurpLnR1ApA/j/EwyT+/2pC2hHTwVmPymaEoUULW8W8QdpJj0DwDukeNgNiP6keSMcYhsS8MV83uZrVB1YeVnlHNEyUkZMOtaZWd9hUYZDk9oMgNUcMJm751zwBgQYf0/Use9VzrjIiJZwsOAl3WFDcbvAuoiPs3BXjK9xkPcIaJaXm8p/zHZMcpJgL0F1ERQm2z78Z6Chy+LNYJMGH9dPWevUzCPYSOJ08v7fFIuLSrlBF5x2YCuP6dyaFP55lrsVM7MBdSyiHmygA23hjjV/pbca/7WisOAPFIixg="
+    - secure: "hubF3QMf2ZnxXHfzd3am/TH5Cjzo9cgugkVjsd7FAvmQxxCYXcnTnLKmegIC1LTe2NNZJrcW4nZQOzKNcZk+q4orjkDqrUG8ZUHKczxjzBQFz7ietdHQx64j/PSSuu4Ey2Wz6IG9QZj5RaHsNuMVahfB1GXr0etHNK0WKoXOgmE1rLxNWyExaUlLIAHCpp6mx21UUqk4Gb7Avn07dvJDIfRBHMeqZt9va9szX11kXlnqwFmBX+Rnz7lpzL2Hcjy5T02dzEV9bjm12pd/qwkN3ujeWLZyWM6gmdfPcQVPJBRI5tSk9Rj6mWFdpMO+6MvOBhNAzRqPsEjuddc8NY/FkZSvIkKv4TAybXHb4KCYnUpurg6XjwFOAfldACMSYdSAlkr0/73pc3EsUGWx8c0DRVueCvF2OijtjU2DPm2tsGYlnNEVPksBmssF6z+VTNo//0kTZnfND27feZSfkMAV+ETjO790eR+QqvLZNkJYvnc5x7j/l52mRWPOhBuk7iFD4+7x7IUfWr3fPPW9xpZkvozXqyjiLWZGp/dYOUqRnf+CPw7FVCLS+kFlvY4Yxp1+l2I/IX68GJpBbaPdbzoz7n4VkUBzfAOHGm9xLdvWtKzIVmsC73cYgJlkYtj2fjD9kuSvCXQy882PLupUsczeDr+YaDKy6sRXPeeK7SdiX1I="
+    - secure: "cptWVWuFs42DVz2ZacjK8FMkn09feUMzDuhvFdcEAnRnPbSEduz/mvdXSl9RwKmN9Xfwfnsd43g47u6GYvuZOwCmxPuBv7zNMF4H6YBB0cyjyXnJDShSbekpuHPrgBsDtE7E1qTogjM0Vsi1yctRJmrJaHado7bnAMSaocKK9eI/GGhPkGIdaqLQL9nP3fF4cHpTipiaH8czXqQYv6TTJicwTXSYncWYNpoBu3XogDjuWNNJ8seGRh12KUV08+hUE2eYUpHu/hinqjWJK/ix/0K8YcGGwir1eQSKCBxqS6mZy5R88wu7v8PnchAAcq805L0cxJdOboYBAl2DddB8ze882vYyufpuUaGGhlFSkP3mT63GgFusoKqzB3DvAdyHHsv2RYCVKlFLbh5pO1inu2OVKFSrhWtKXWMkUaIeJKIVsOtH3kCI1eg3SOdc4vUjk/YeYhyj1jFe4DLrLpISMeimAWlGYWv6WcblL5H/YojJnOINYl3IgvvExtej2IIGfZhLTorotEsO27+rdcDOcZf0zh0rrRc52HPg74CbkhbAWk6nRQnB4UhhqSjPa9N+M/W84F5pjY4i5fqF2hGlJcDXZgCyZ+ZfQEaQeGKgVOxDXO7f3bW3p8DYjVWwzkniwkppPnS9/j55Jnq5uY23v5XeqNJbdBRmz1wNsVi7TCw="
+    - secure: "bPRHINctaH5A9zslqoF0OCwsoTlstbE1sv24V6pBhAYGj6IFw/k9ZuICxRxC1EUJT6b1Hd5oVRLqChOCYQMO7sklJjUiee8DwLoF/rJB6EhbGij8gCNaGtQ1O/xBGCZZjYy7u3Hc8KEXc5dAnfPBi/CvNUHej3TpAVGGPl7RC1klVVrWTVf0OffCK086DVsDviC557SOdlMi6BCz8UHXMzEp1mDCkchTcRu5x9aowJd9TzmL17u7GbCqwjdy0w4TMPQKXzk4MVvnNp6d29/ZDDfv3ctdhouN+YP429RU4TeN8U4EWlYZ6+5dc0Umjni26mQ+avWVPNNAHzxk5TludO52KhhbRzhRTItw0FCuBhSB1WcY2Za4BCyBiKMkOnDYT7Ncew9dSki6yW8o4L91SKGszKmujNYPdGrLelsRqQFBEyqMoKGFwIb/2xO8LF7MnHZS9tJna+pt3LWQEXw1hn5baTkC1PRXfxZsW5CqfXTSkpRgcKJakmz+K7goWo7sRd/0zLCXf7zipx1Dw+DxAKI+kTYLX0s89xCr4XwK7zK76oIvxODfdE5sEOhTtGG5lAOF4btYq52hbAarhmFQn+NNFHKPSvJVu5tRsOHy54s+Z3/P6XxsSdCvXOSunzOGp5lqm+YCiad6GexjtCBm/kQ872gutfytFwMPUUBbVKw="
+    - secure: "PwYyaQNRPtF1vqOuPciUgA47dPzJWgoxrfONSwDnZoOBDL2j9DQQbIyF41E0ymklTfc/WaIUQwTLzUjWiwSLp1jhVuJ9t2QKZC4WlqCUcQTK0nJ4oN8GW7o2HgULmPlXEHJU+Gtk4NDeL1MnR59EAHEq9DmQhJ8BDziZCPp8bsTUAdfuiTxdTXgMCMxaZ9Ixsc03s33iJClcM8SoYiTukcVncSOjNSo7ArRf/Givlniq0Cwc2zpznLerD5qMvSg96BAbAbooxTH0IcqRGSEb2oDv0ke3elarhza1dqNehG2mCdBBA2AfULKRSwuM8Zs9jzTAneK5h5TW6iAhHIDcXLR/636KzVAHf+3sE63qeobsa9Sylo4tMkf/0yd+A68aEMVty2guU60fseJfspGZzVk82gMZ1Y0wsDiRlytpa9F2pvJQaY1CAwYjjhU105eBga02Zxmx9tainGidNZeyBob9PdZlmoRGWiUJRNE1neJ2wed3ytKawActJLleg/CsuA17Fv/uXNtufuqRoXlG8CGiVeGUsS0jI5JZjWbFuWnq9jjvGmUsPWss+iwPHrR7mWb4QDoUXDbJuTJpfw/dGeZuUIPFHgUpY4iDfTpAg2BVgjvt7cGroxM2yzjhWuduRTltam8uAoCQyhT6QETwKPZHICGz/ezb7e9RGzf6YH4="
+
+after_success:
+  - if [ ${TRAVIS_SECURE_ENV_VARS} = true ] ; then
+         tar -zcf build.tar.gz ${BUILD_DIRECTORY}
+      && buildLink=$(curl --upload-file ./build.tar.gz https://transfer.sh/build.tar.gz)
+      && travis_branch="["${TRAVIS_BRANCH}"]"
+      && ci_name="[Travis-CI]"
+      && os_name="["${TRAVIS_OS_NAME}"]"
+      && compiler="[rustc%20"${TRAVIS_RUST_VERSION}"]:"
+      && pass="%20#"${TRAVIS_BUILD_NUMBER}"%20PASSED"
+      && message=${travis_branch}${ci_name}${os_name}${compiler}${pass}
+      && card_name="name="${message}
+      && additional_data="&due=null&pos=top"
+      && description="&desc=\[Build\]:%20"${buildLink}"%0D\[Logs\]:%20https://travis-ci.org/Cyberunner23/TrelloBST/jobs/"${TRAVIS_JOB_ID}
+      && trello_data="&idList="${TRELLO_API_LIST_ID}"&idLabels="${TRELLO_API_BUILD_PASS_ID}"&token="${TRELLO_API_TOKEN}"&key="${TRELLO_API_KEY}
+      && data=${card_name}${additional_data}${description}${trello_data}
+      && curl -s -o /dev/null -w "%{http_code}\n" --data ${data} https://api.trello.com/1/cards;
+    fi
+
+after_failure:
+  - if [ ${TRAVIS_SECURE_ENV_VARS} = true ] ; then
+         travis_branch="["${TRAVIS_BRANCH}"]"
+      && ci_name="[Travis-CI]"
+      && os_name="["${TRAVIS_OS_NAME}"]"
+      && compiler="[rustc%20"${TRAVIS_RUST_VERSION}"]:"
+      && fail="%20#"${TRAVIS_BUILD_NUMBER}"%20FAILED"
+      && message=${travis_branch}${ci_name}${os_name}${compiler}${fail}
+      && card_name="name="${message}"
+      && additional_data="&due=null&pos=top"
+      && description="&desc=\[Build\]:%20"${buildLink}"%0D\[Logs\]:%20https://travis-ci.org/Cyberunner23/TrelloBST/jobs/"${TRAVIS_JOB_ID}"
+      && trello_data="&idList="${TRELLO_API_LIST_ID}"&idLabels="${TRELLO_API_BUILD_PASS_ID}"&token="${TRELLO_API_TOKEN}"&key="${TRELLO_API_KEY}
+      && data=${card_name}${additional_data}${description}${trello_data}
+      && curl -s -o /dev/null -w "%{http_code}\n" --data ${data} https://api.trello.com/1/cards;
+    fi
