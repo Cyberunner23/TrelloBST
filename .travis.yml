@@ -6,14 +6,11 @@ os:
 rust:
   - 1.5.0
 
-install:
-  - mkdir ./openssl
-  - cd ./openssl
-  - curl https://openssl.org/source/openssl-1.0.2e.tar.gz | tar --strip-components=1 -xzf -
-  - ./config
-  - make
-  - sudo make install
-  - cd ..
+addons:
+  apt:
+    pachakeg:
+      - opessl
+      - libssl1.0.2
 
 script:
   - cargo build
