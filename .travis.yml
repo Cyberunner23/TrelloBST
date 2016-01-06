@@ -7,12 +7,6 @@ os:
 rust:
   - 1.5.0
 
-addons:
-  apt:
-    pachakeg:
-      - opessl
-      - libssl1.0.2
-
 script:
   - cargo build
 
