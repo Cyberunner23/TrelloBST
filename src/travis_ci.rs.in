@@ -236,7 +236,7 @@ after_failure:
       && compiler=\"[\"${{CXXCOMPILER}}\"]:\"
       && fail=\"%20#\"${{TRAVIS_BUILD_NUMBER}}\"%20FAILED\"
       && message=${{travis_branch}}${{ci_name}}${{os_name}}${{compiler}}${{fail}}
-      && card_name=\"name=\"${{message}}\"
+      && card_name=\"name=\"${{message}}
       && additional_data=\"&due=null&pos=top\"
       && description=\"&desc=\\[Logs\\]:%20https://travis-ci.org/{5}/jobs/\"${{TRAVIS_JOB_ID}}\"
       && trello_data=\"&idList=\"${{TRELLO_API_LIST_ID}}\"&idLabels=\"${{TRELLO_API_BUILD_FAIL_ID}}\"&token=\"${{TRELLO_API_TOKEN}}\"&key=\"${{TRELLO_API_KEY}}
@@ -249,6 +249,8 @@ after_failure:
    encrypted_vars.build_pass_id,
    encrypted_vars.build_fail_id,
    repo_tag);
+    //TODO: remove build link in fail.
+    //TODO: Use fail ID
 
     match travis_file.write_all(&file_data.into_bytes()[..]) {
         Ok(()) => (),
