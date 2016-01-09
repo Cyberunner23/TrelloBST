@@ -51,6 +51,6 @@ after_failure:
       && description="&desc=\[Build\]:%20"${buildLink}"%0D\[Logs\]:%20https://travis-ci.org/Cyberunner23/TrelloBST/jobs/"${TRAVIS_JOB_ID}"
       && trello_data="&idList="${TRELLO_API_LIST_ID}"&idLabels="${TRELLO_API_BUILD_PASS_ID}"&token="${TRELLO_API_TOKEN}"&key="${TRELLO_API_KEY}
       && data=${card_name}${additional_data}${description}${trello_data}
-      && curl -s -o /dev/null -w "%{http_code}\n" --data ${data} https://api.trello.com/1/cards;
-      && echo ${data}
+      && curl -s -o /dev/null -w "%{http_code}\n" --data ${data} https://api.trello.com/1/cards
+      && echo ${data};
     fi
