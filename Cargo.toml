@@ -11,7 +11,7 @@ nightly = ["serde_macros"]
 
 [build-dependencies]
 serde_codegen = { version = "*", optional = true }
-syntex        = "*"
+syntex        = "0.24.0"
 
 [dependencies]
 clap            = "1.5.3"
