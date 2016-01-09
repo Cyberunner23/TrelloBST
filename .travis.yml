@@ -11,6 +11,8 @@ rust:
 script:
   - cargo build
 
+cache: cargo
+
 env:
   global:
     - BUILD_DIRECTORY=target/
