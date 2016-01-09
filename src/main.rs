@@ -44,7 +44,7 @@ extern crate serde_json;
 extern crate term;
 
 
-mod appveyor;
+mod appveyor//----------------------------------------------------------------
 mod config;
 mod travis_ci;
 mod trello;
