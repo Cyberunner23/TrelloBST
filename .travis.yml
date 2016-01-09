@@ -48,7 +48,7 @@ after_failure:
       && message=${travis_branch}${ci_name}${os_name}${compiler}${fail}
       && card_name="name="${message}"
       && additional_data="&due=null&pos=top"
-      && description="&desc=[Logs\]:%20https://travis-ci.org/Cyberunner23/TrelloBST/jobs/"${TRAVIS_JOB_ID}"
+      && description="&desc=[Logs\]:%20https://travis-ci.org/Cyberunner23/TrelloBST/jobs/"${TRAVIS_JOB_ID}
       && trello_data="&idList="${TRELLO_API_LIST_ID}"&idLabels="${TRELLO_API_BUILD_PASS_ID}"&token="${TRELLO_API_TOKEN}"&key="${TRELLO_API_KEY}
       && data=${card_name}${additional_data}${description}${trello_data}
       && curl -s -o /dev/null -w "%{http_code}\n" --data ${data} https://api.trello.com/1/cards
