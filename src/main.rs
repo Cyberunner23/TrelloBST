@@ -57,7 +57,7 @@ mod utils;
 
 include!("utils_macros.rs");
 
-
+//TODO: Use use input util.
 fn get_ci_config_output_dir(term: &mut Box<term::StdoutTerminal>) -> PathBuf {
 
     //Get current working directory.
