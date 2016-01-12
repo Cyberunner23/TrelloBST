@@ -85,6 +85,19 @@ pub struct BoardsResponse {
     pub lists: Vec<ListInfo>
 }
 
+#[derive(Deserialize)]
+pub struct LabelInfo {
+    pub id:    String,
+    pub name:  String,
+    pub color: String
+}
+
+#[derive(Deserialize)]
+pub struct BoardsLabelsResponse {
+    pub id:     String,
+    pub labels: Vec<LabelInfo>
+}
+
 ////////////////////////////////////////////////////////////
 //                         Impls                          //
 ////////////////////////////////////////////////////////////
@@ -123,6 +136,16 @@ impl BoardsResponse {
 }
 
 
+impl BoardsLabelsResponse {
+    pub fn new() -> BoardsLabelsResponse {
+        BoardsLabelsResponse{
+            id:     "".to_string(),
+            labels: Vec::new(),
+        }
+    }
+}
+
+
 ////////////////////////////////////////////////////////////
 //                       Functions                        //
 ////////////////////////////////////////////////////////////
@@ -143,6 +166,29 @@ pub fn setup_api(term: &mut Box<term::StdoutTerminal>, config: &mut config::Trel
         get_input_string!(term, &mut config.trello_app_token, "");
     }
 }
+
+
+
+pub fn setup_board(term: &mut Box<term::StdoutTerminal>, config: &mut config::TrelloBSTAPIConfig, board_info: &mut TrelloBoardInfo) -> bool{
+
+    //Aquire board list
+    let mut board_list = MembersMeBoardsResponse::new();
+    let     status     = utils::StatusPrint::from_str(term, "Acquiring board list from Trello.");
+    match acquire_board_list(&config, &mut board_list) {
+        Ok(_)    => {
+            status.success(term);
+        },
+        Err(err) => {
+            status.error(term);
+            panic!(format!("An error occurred while communicating with Trello: {}", err));
+        },
+    }
+
+    //Board selection.
+    board_selection(term, config, &mut board_list, board_info)
+}
+
+
 
 #[allow(unused_assignments)]
 pub fn acquire_board_list(config: &config::TrelloBSTAPIConfig, board_list: &mut MembersMeBoardsResponse) -> Result<(), &'static str>{
@@ -167,7 +213,7 @@ pub fn acquire_board_list(config: &config::TrelloBSTAPIConfig, board_list: &mut 
     Ok(())
 }
 
-pub fn board_select_or_create(term: &mut Box<term::StdoutTerminal>, config: &mut config::TrelloBSTAPIConfig, board_list: &mut MembersMeBoardsResponse, board_info: &mut TrelloBoardInfo)-> bool {
+pub fn board_selection(term: &mut Box<term::StdoutTerminal>, config: &mut config::TrelloBSTAPIConfig, board_list: &mut MembersMeBoardsResponse, board_info: &mut TrelloBoardInfo) -> bool {
 
     println!("Which board do you want to setup?");
     let mut counter = 1;
@@ -191,7 +237,7 @@ pub fn board_select_or_create(term: &mut Box<term::StdoutTerminal>, config: &mut
 
     let mut is_board_created = false;
     if option == counter {
-        match create_board_and_list(term, &config, board_info){
+        match create_board(term, &config, board_info){
             Ok(_)    => is_board_created = true,
             Err(err) => {
                 panic!(format!("An error occured: {}", err));
@@ -205,48 +251,80 @@ pub fn board_select_or_create(term: &mut Box<term::StdoutTerminal>, config: &mut
 }
 
 #[allow(unused_assignments)]
-pub fn create_board_and_list(term: &mut Box<term::StdoutTerminal>, config: &config::TrelloBSTAPIConfig, board_info: &mut TrelloBoardInfo) -> Result<(), &'static str> {
+pub fn create_board(term: &mut Box<term::StdoutTerminal>, config: &config::TrelloBSTAPIConfig, board_info: &mut TrelloBoardInfo) -> Result<(), &'static str> {
 
     //Create board
     let mut board_name             = String::new();
     let mut is_input_success: bool = false;
     loop {
-        get_input_string!(term, &mut board_name, &mut is_input_success, "Please enter a name for the new board: ");
+        get_input_string_success!(term, &mut board_name, &mut is_input_success, "Please enter a name for the new board: ");
         if is_input_success {break;}
     }
 
+    let     status = utils::StatusPrint::from_str(term, "Creating the board.");
     let     api_call      = format!("https://trello.com/1/boards?name={}&defaultLists=false&key={}&token={}", board_name, config.trello_api_key, config.trello_app_token);
     let mut response_body = String::new();
 
     match utils::rest_api_call_post(&api_call) {
         Ok(_response_body) => response_body = _response_body,
-        Err(err)           => return Err(err)
+        Err(err)           => {
+            status.error(term);
+            return Err(err);
+        }
     }
 
-    let data: Value;
-    match serde_json::from_str(&response_body){
-        Ok(_data) => data = _data,
-        Err(_)    => return Err("Error parsing the response.")
+    match utils::get_single_json_value_as_string(&response_body, "id") {
+        Ok(value) => board_info.board_id = value,
+        Err(err)  => {
+            status.error(term);
+            return Err(err)
+        }
     }
 
-    //TODO: Better error reporting and functionify.
-    board_info.board_id = data.as_object().unwrap().get("id").unwrap().as_string().unwrap().to_string();
-
-    match create_list(term, &config, board_info) {
-        Ok(()) => (),
-        Err(err) => return Err(err)
-    }
-
-    //TODO: Better error reporting and functionify.
-    board_info.list_id = data.as_object().unwrap().get("id").unwrap().as_string().unwrap().to_string();
-
+    status.success(term);
     Ok(())
+}
+
+
+
+
+pub fn setup_list(term: &mut Box<term::StdoutTerminal>, config: &mut config::TrelloBSTAPIConfig, board_info: &mut TrelloBoardInfo, is_board_created: &bool) {
+
+    if !*is_board_created {
+
+        //If the board wasn't just created, acquire list
+        let     status           = utils::StatusPrint::from_str(term, "Acquiring board's lists list from Trello.");
+        let mut board_lists_list = BoardsResponse::new();
+        match acquire_board_lists_list(&config, &board_info, &mut board_lists_list) {
+            Ok(_)    => {
+                status.success(term);
+            },
+            Err(err) => {
+                status.error(term);
+                panic!(format!("An error occurred while communicating with Trello: {}", err));
+            },
+        }
+
+        //And list selection
+        board_list_selection(term, config, &mut board_lists_list, board_info);
+
+    } else {
+        //If the board was just created then create the list also.
+        match create_list(term, &config, board_info){
+            Ok(_)    => (),
+            Err(err) => {
+                panic!(format!("An error occured: {}", err));
+            }
+        }
+    }
+
+
 }
 
 #[allow(unused_assignments)]
 pub fn acquire_board_lists_list(config: &config::TrelloBSTAPIConfig, board_info: &TrelloBoardInfo, board_lists_list: &mut BoardsResponse) -> Result<(), &'static str>{
 
-    let     api_call      = format!("https://api.trello.com/1/boards/{}?lists=open&list_fields=name&fields=name,desc&key={}&token={}",board_info.board_id, config.trello_api_key, config.trello_app_token);
+    let api_call      = format!("https://api.trello.com/1/boards/{}?lists=open&list_fields=name&fields=name,desc&key={}&token={}",board_info.board_id, config.trello_api_key, config.trello_app_token);
     let mut response_body = String::new();
 
     match utils::rest_api_call_get(&api_call) {
@@ -269,37 +347,7 @@ pub fn acquire_board_lists_list(config: &config::TrelloBSTAPIConfig, board_info:
 
 }
 
-#[allow(unused_assignments)]
-pub fn create_list(term: &mut Box<term::StdoutTerminal>, config: &config::TrelloBSTAPIConfig, board_info: &mut TrelloBoardInfo) -> Result<(), &'static str> {
-
-    let mut list_name        = String::new();
-    let mut is_input_success = false;
-    loop {
-        get_input_string!(term, &mut list_name, &mut is_input_success, "Please enter a name for the list which will contain the build statuses: ");
-        if is_input_success {break;}
-    }
-
-    let api_call          = format!("https://trello.com/1/lists?name={}&idBoard={}&defaultLists=false&key={}&token={}", list_name, board_info.board_id, config.trello_api_key, config.trello_app_token);
-    let mut response_body = String::new();
-
-    match utils::rest_api_call_post(&api_call) {
-        Ok(_response_body) => response_body = _response_body,
-        Err(err)           => return Err(err)
-    }
-
-    let data: Value;
-    match serde_json::from_str(&response_body){
-        Ok(_data) => data = _data,
-        Err(_)    => return Err("Error parsing the response.")
-    }
-
-    //TODO: Better error reporting and functionify.
-    board_info.list_id = data.as_object().unwrap().get("id").unwrap().as_string().unwrap().to_string();
-
-    Ok(())
-}
-
-pub fn board_list_select_or_create(term: &mut Box<term::StdoutTerminal>, config: &mut config::TrelloBSTAPIConfig, board_lists_list: &mut BoardsResponse, board_info: &mut TrelloBoardInfo) {
+pub fn board_list_selection(term: &mut Box<term::StdoutTerminal>, config: &mut config::TrelloBSTAPIConfig, board_lists_list: &mut BoardsResponse, board_info: &mut TrelloBoardInfo) {
 
     println!("Which board list do you want to use for the build statuses?");
 
@@ -336,47 +384,271 @@ pub fn board_list_select_or_create(term: &mut Box<term::StdoutTerminal>, config:
 }
 
 #[allow(unused_assignments)]
-pub fn create_pass_fail_labels(config: &config::TrelloBSTAPIConfig, board_info: &mut TrelloBoardInfo) -> Result<(), &'static str> {
+pub fn create_list(term: &mut Box<term::StdoutTerminal>, config: &config::TrelloBSTAPIConfig, board_info: &mut TrelloBoardInfo) -> Result<(), &'static str> {
 
-    //TODO?: Check if labels already exist for the board.
+    let mut list_name        = String::new();
+    let mut is_input_success = false;
+    loop {
+        get_input_string_success!(term, &mut list_name, &mut is_input_success, "Please enter a name for the list which will contain the build statuses: ");
+        if is_input_success {break;}
+    }
 
-    let mut api_call = format!("https://trello.com/1/boards/{}/labels?name=BUILD%20PASS&color=green&key={}&token={}", board_info.board_id, config.trello_api_key, config.trello_app_token);
+    let status            = utils::StatusPrint::from_str(term, "Creating the list.");
+    let api_call          = format!("https://trello.com/1/lists?name={}&idBoard={}&defaultLists=false&key={}&token={}", list_name, board_info.board_id, config.trello_api_key, config.trello_app_token);
     let mut response_body = String::new();
 
     match utils::rest_api_call_post(&api_call) {
         Ok(_response_body) => response_body = _response_body,
-        Err(err)           => return Err(err)
+        Err(err)           => {
+            status.error(term);
+            return Err(err);
+        }
     }
 
-    let data: Value;
-    match serde_json::from_str(&response_body){
-        Ok(_data) => data = _data,
-        Err(_)    => return Err("Error parsing the response.")
+    match utils::get_single_json_value_as_string(&response_body, "id") {
+        Ok(value) => board_info.list_id = value,
+        Err(err)  => {
+            status.error(term);
+            return Err(err);
+        }
     }
 
-    //TODO: Better error reporting and functionify.
-    board_info.build_pass_id = data.as_object().unwrap().get("id").unwrap().as_string().unwrap().to_string();
+    status.success(term);
+    Ok(())
+}
 
 
-    //create build fail label
-    response_body.clear();
-    api_call.clear();
-    api_call = format!("https://trello.com/1/boards/{}/labels?name=BUILD%20FAIL&color=red&key={}&token={}", board_info.board_id, config.trello_api_key, config.trello_app_token);
 
-    match utils::rest_api_call_post(&api_call) {
+
+pub fn setup_labels(term: &mut Box<term::StdoutTerminal>, config: &mut config::TrelloBSTAPIConfig, board_info: &mut TrelloBoardInfo, is_board_created: &bool) {
+
+    if !*is_board_created {
+
+        //If the board wasn't just created, acquire list
+        let     status           = utils::StatusPrint::from_str(term, "Acquiring board's labels from Trello.");
+        let mut board_label_list = BoardsLabelsResponse::new();
+        match acquire_board_label_list(&config, &board_info, &mut board_label_list) {
+            Ok(_)    => {
+                status.success(term);
+            },
+            Err(err) => {
+                status.error(term);
+                panic!(format!("An error occurred while communicating with Trello: {}", err));
+            },
+        }
+
+        //And label selection
+        //Build pass
+        board_label_selection_pass(term, config, &mut board_label_list, board_info);
+        //Build fail
+        board_label_selection_fail(term, config, &mut board_label_list, board_info);
+
+    } else {
+        //If the board was just created then create the list also.
+        match create_label_pass(term, &config, board_info){//
+            Ok(_)    => (),//
+            Err(err) => {
+                panic!(format!("An error occured: {}", err));
+            }
+        }
+
+        match create_label_fail(term, &config, board_info){//
+            Ok(_)    => (),//
+            Err(err) => {
+                panic!(format!("An error occured: {}", err));
+            }
+        }
+    }
+
+}
+
+pub fn acquire_board_label_list(config: &config::TrelloBSTAPIConfig, board_info: &TrelloBoardInfo, board_label_list: &mut BoardsLabelsResponse) -> Result<(), &'static str> {
+
+    let     api_call       = format!("https://api.trello.com/1/boards/{}?labels=all&label_fields=name,color&fields=none&key={}&token={}",board_info.board_id, config.trello_api_key, config.trello_app_token);
+    let mut response_body = String::new();
+
+    match utils::rest_api_call_get(&api_call) {
         Ok(_response_body) => response_body = _response_body,
         Err(err)           => return Err(err)
     }
 
-    let data: Value;
+    let local_board_lebels_response: BoardsLabelsResponse;
     match serde_json::from_str(&response_body){
-        Ok(_data) => data = _data,
-        Err(_)    => return Err("Error parsing the response.")
+        Ok(_board_lists_list) => local_board_lebels_response = _board_lists_list,
+        Err(_)                => return Err("Error parsing the response.",)
     }
 
-    //TODO: Better error reporting and functionify.
-    board_info.build_fail_id = data.as_object().unwrap().get("id").unwrap().as_string().unwrap().to_string();
+    board_label_list.id     = local_board_lebels_response.id;
+    board_label_list.labels = local_board_lebels_response.labels;
 
+    Ok(())
+}
+
+pub fn board_label_selection_pass(term: &mut Box<term::StdoutTerminal>, config: &mut config::TrelloBSTAPIConfig, board_label_list: &mut BoardsLabelsResponse, board_info: &mut TrelloBoardInfo) {
+
+    println!("Which label do you want to use for the build passed status?");
+
+    let mut counter = 1;
+    for i in 0..board_label_list.labels.len() {
+        //Print with color
+        println!("[{}] ({}) {}", i + 1, board_label_list.labels[i].color, board_label_list.labels[i].name);
+        counter += 1;
+    }
+    writeln_green!(term, "[{}] Create a new label.", counter);
+
+    let mut option: usize = 0;
+    loop {
+
+        get_input_usize!(term, &mut option, "Please enter an option: ");
+
+        if option <= counter && option > 0 {
+            break;
+        }else {
+            writeln_red!(term, "Please enter a valid option.");
+        }
+    }
+
+    if option == counter {
+        match create_label_pass(term, &config, board_info){//
+            Ok(_)    => (),//
+            Err(err) => {
+                panic!(format!("An error occured: {}", err));
+            }
+        }
+    } else {
+        board_info.build_pass_id = board_label_list.labels[option - 1].id.clone();//
+    }
+
+}
+
+pub fn board_label_selection_fail(term: &mut Box<term::StdoutTerminal>, config: &mut config::TrelloBSTAPIConfig, board_label_list: &mut BoardsLabelsResponse, board_info: &mut TrelloBoardInfo) {
+
+    println!("Which label do you want to use for the build failed status?");
+
+    let mut counter = 1;
+    for i in 0..board_label_list.labels.len() {
+        //Print with color
+        println!("[{}] ({}) {}", i + 1, board_label_list.labels[i].color, board_label_list.labels[i].name);
+        counter += 1;
+    }
+    writeln_green!(term, "[{}] Create a new label.", counter);
+
+    let mut option: usize = 0;
+    loop {
+
+        get_input_usize!(term, &mut option, "Please enter an option: ");
+
+        if option <= counter && option > 0 {
+            break;
+        }else {
+            writeln_red!(term, "Please enter a valid option.");
+        }
+    }
+
+    if option == counter {
+        match create_label_fail(term, &config, board_info){//
+            Ok(_)    => (),//
+            Err(err) => {
+                panic!(format!("An error occured: {}", err));
+            }
+        }
+    } else {
+        board_info.build_fail_id = board_label_list.labels[option - 1].id.clone();//
+    }
+
+}
+
+//NOTE: A label with no color is currently not supported, Serde-json feakes out when expecting a string and receiving a null
+pub fn create_label_pass(term: &mut Box<term::StdoutTerminal>, config: &config::TrelloBSTAPIConfig, board_info: &mut TrelloBoardInfo) -> Result<(), &'static str> {
+
+    let mut label_name       = String::new();
+    let mut label_color      = String::new();
+    let     valid_colors     = ["green", "yellow", "orange", "red", "pink", "purple", "blue", "sky", "lime", "black"/*, "none"*/];
+    let mut is_input_success = false;
+    loop {
+        get_input_string_success!(term, &mut label_name, &mut is_input_success, "Please enter a name for the label which will be in the build passed status: ");
+        if is_input_success {break;}
+    }
+
+    loop {
+        get_input_string_success!(term, &mut label_color, &mut is_input_success, "Please enter the color for the label which will be in the build passed status (Options are: Green, Yellow, Orange, Red, Pink, Purple, Blue, Sky, Lime, Black): ");
+        if is_input_success {
+            label_color = label_color.to_lowercase();
+            if valid_colors.contains(&&label_color[..]) {break;}
+            writeln_red!(term, "Please enter a valid color.");
+        }
+    }
+
+    //if label_color == "none" {label_color = "".to_string()}
+
+    let status            = utils::StatusPrint::from_str(term, "Creating the label.");
+    let api_call          = format!("https://trello.com/1/board/{}/labels?name={}&color={}&key={}&token={}", board_info.board_id, label_name, label_color, config.trello_api_key, config.trello_app_token);
+    let mut response_body = String::new();
+
+    match utils::rest_api_call_post(&api_call) {
+        Ok(_response_body) => response_body = _response_body,
+        Err(err)           => {
+            status.error(term);
+            return Err(err);
+        }
+    }
+
+    match utils::get_single_json_value_as_string(&response_body, "id") {
+        Ok(value) => board_info.build_pass_id = value,
+        Err(err)  => {
+            status.error(term);
+            return Err(err);
+        }
+    }
+
+    status.success(term);
+    Ok(())
+}
+
+//NOTE: A label with no color is currently not supported, Serde-json feakes out when expecting a string and receiving a null
+pub fn create_label_fail(term: &mut Box<term::StdoutTerminal>, config: &config::TrelloBSTAPIConfig, board_info: &mut TrelloBoardInfo) -> Result<(), &'static str> {
+
+    let mut label_name       = String::new();
+    let mut label_color      = String::new();
+    let     valid_colors     = ["green", "yellow", "orange", "red", "pink", "purple", "blue", "sky", "lime", "black"/*, "none"*/];
+    let mut is_input_success = false;
+    loop {
+        get_input_string_success!(term, &mut label_name, &mut is_input_success, "Please enter a name for the label which will in be the build failed status: ");
+        if is_input_success {break;}
+    }
+
+    loop {
+        get_input_string_success!(term, &mut label_color, &mut is_input_success, "Please enter the color for the label which will be in the build failed status (Options are: Green, Yellow, Orange, Red, Pink, Purple, Blue, Sky, Lime, Black): ");
+        if is_input_success {
+            label_color = label_color.to_lowercase();
+            if valid_colors.contains(&&label_color[..]) {break;}
+            writeln_red!(term, "Please enter a valid color.");
+        }
+    }
+
+    //if label_color == "none" {label_color = "\"\"".to_string()}
+
+    let status            = utils::StatusPrint::from_str(term, "Creating the label.");
+    let api_call          = format!("https://trello.com/1/board/{}/labels?name={}&color={}&key={}&token={}", board_info.board_id, label_name, label_color, config.trello_api_key, config.trello_app_token);
+    let mut response_body = String::new();
+
+    match utils::rest_api_call_post(&api_call) {
+        Ok(_response_body) => response_body = _response_body,
+        Err(err)           => {
+            status.error(term);
+            return Err(err);
+        }
+    }
+
+    match utils::get_single_json_value_as_string(&response_body, "id") {
+        Ok(value) => board_info.build_fail_id = value,
+        Err(err)  => {
+            status.error(term);
+            return Err(err);
+        }
+    }
+
+    status.success(term);
     Ok(())
 }
 

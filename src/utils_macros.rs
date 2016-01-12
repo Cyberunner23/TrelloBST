@@ -75,9 +75,9 @@ macro_rules! write_green {
 
 
 macro_rules! get_input_usize {
-    ($term:expr, $var:expr, $msg:tt) => {{
+    ($term:expr, $var:expr, $($msg:tt)*) => {{
         let mut input_str = String::new();
-        print!($msg);
+        match_to_none!($term.write_fmt(format_args!("{}", format_args!($($msg)*))));///////////////////////////
         match_to_none!($term.flush());
         match io::stdin().read_line(&mut input_str) {
             Ok(_)  => {
@@ -95,9 +95,9 @@ macro_rules! get_input_usize {
         }
     }};
 
-    ($term:expr, $var:expr, $is_success:expr, $msg:tt) => {{
+    ($term:expr, $var:expr, $is_success:expr, $($msg:tt)*) => {{
         let mut input_str = String::new();
-        print!($msg);
+        match_to_none!($term.write_fmt(format_args!("{}", format_args!($($msg)*))));///////////////////////////////
         match_to_none!($term.flush());
         match io::stdin().read_line(&mut input_str) {
             Ok(_)  => {
@@ -119,9 +119,9 @@ macro_rules! get_input_usize {
 }
 
 macro_rules! get_input_string {
-    ($term:expr, $var:expr, $msg:tt) => {{
+    ($term:expr, $var:expr, $($msg:tt)*) => {{
         let mut input_str = String::new();
-        print!($msg);
+        match_to_none!($term.write_fmt(format_args!("{}", format_args!($($msg)*))));////////////////////////////
         match_to_none!($term.flush());
         match io::stdin().read_line(&mut input_str) {
             Ok(_)  => {
@@ -130,10 +130,12 @@ macro_rules! get_input_string {
             Err(_) => {panic!("Error while reading the input.");}
         }
     }};
+}
 
-    ($term:expr, $var:expr, $is_success:expr, $msg:tt) => {{
+macro_rules! get_input_string_success {
+    ($term:expr, $var:expr, $is_success:expr, $($msg:tt)*) => {{
         let mut input_str = String::new();
-        print!($msg);
+        match_to_none!($term.write_fmt(format_args!("{}", format_args!($($msg)*))));///////////////////////////
         match_to_none!($term.flush());
         match io::stdin().read_line(&mut input_str) {
             Ok(_)  => {

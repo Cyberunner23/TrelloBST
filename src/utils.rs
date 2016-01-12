@@ -23,14 +23,19 @@
     SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+use std::collections::BTreeMap;
 use std::io::Read;
 
 extern crate hyper;
 use hyper::Client;
 use hyper::client::IntoUrl;
 use hyper::client::response::Response;
-//use hyper::header::Headers;
+use hyper::header::Headers;
 use hyper::Url;
+
+extern crate serde;
+extern crate serde_json;
+use serde_json::Value;
 
 extern crate term;
 
@@ -158,41 +163,109 @@ pub fn rest_api_call_post(api_call: &String) -> Result<String, &'static str> {
     Ok(response_body)
 }
 
-//NOTE: This code is linked with the travis-ci api setup (currently unused, kept in case it becomes necessary.)
-//pub fn rest_api_call_post_with_header(api_call: &String, header: Headers) -> Result<String, &'static str> {
-//
-//    let     http_client   = Client::new();
-//    let mut response:       Response;
-//    let mut response_body = String::new();
-//    let     api_call_url:   Url;
-//
-//    match api_call.into_url() {
-//        Ok(url) => api_call_url = url,
-//        Err(_)  => return Err("Error while parsing API call url.")
-//    }
-//
-//    match http_client.post(api_call_url)
-//            .headers(header)
-//            .send() {
-//        Ok(res) => response = res,
-//        Err(_)  => return Err("Error calling the API.")
-//    }
-//
-//    match response.read_to_string(&mut response_body){
-//        Ok(_)  => (),
-//        Err(_) => return Err("Error converting the API response to a string.")
-//    }
-//
-//    if response_body == "invalid key" {
-//        return Err("Error, the API key is invalid.");
-//    }
-//
-//    if response_body == "invalid token" {
-//        return Err("The app token is invalid.");
-//    }
-//
-//    Ok(response_body)
-//}
+#[allow(dead_code)]
+pub fn rest_api_call_post_with_header(api_call: &String, header: Headers) -> Result<String, &'static str> {
+
+    let     http_client   = Client::new();
+    let mut response:       Response;
+    let mut response_body = String::new();
+    let     api_call_url:   Url;
+
+    match api_call.into_url() {
+        Ok(url) => api_call_url = url,
+        Err(_)  => return Err("Error while parsing API call url.")
+    }
+
+    match http_client.post(api_call_url)
+            .headers(header)
+            .send() {
+        Ok(res) => response = res,
+        Err(_)  => return Err("Error calling the API.")
+    }
+
+    match response.read_to_string(&mut response_body){
+        Ok(_)  => (),
+        Err(_) => return Err("Error converting the API response to a string.")
+    }
+
+    if response_body == "invalid key" {
+        return Err("Error, the API key is invalid.");
+    }
+
+    if response_body == "invalid token" {
+        return Err("The app token is invalid.");
+    }
+
+    Ok(response_body)
+}
+
+#[allow(dead_code)]
+#[allow(unused_variables)]
+pub fn get_single_json_value_as_string(json_string: &String, field: &str) -> Result<String, &'static str>{
+
+    let data: Value;
+    match serde_json::from_str(&json_string){
+        Ok(_data) => data = _data,
+        Err(err)  => {
+            return Err("Error parsing the JSON data")
+        }
+    }
+
+    let object: BTreeMap<String, Value>;
+    match data.as_object().ok_or("Error: JSON data does not describe an object.") {
+        Ok(_object) => {
+            object  = _object.clone();
+        },
+        Err(err)    => {
+            return Err(err);
+        }
+    }
+
+    let json_value: Value;
+    match object.get(field).ok_or("Error: The field has not been found in the JSON data.") {
+        Ok(_json_value) => {
+            json_value  = _json_value.clone();
+        }
+        Err(err)        => {
+            return Err(err)
+        }
+    }
+
+    let value: String;
+    match json_value.as_string().ok_or("Error: The field's value is not a string.") {
+        Ok(_value) => Ok(_value.to_string()),
+        Err(err)   => Err(err)
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

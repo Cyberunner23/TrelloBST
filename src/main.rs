@@ -36,9 +36,11 @@ extern crate clap;
 use clap::{Arg, App};
 
 extern crate hyper;
+use hyper::header::Headers;
 
 extern crate serde;
 extern crate serde_json;
+
 
 extern crate term;
 
@@ -49,10 +51,6 @@ mod travis_ci;
 mod trello;
 mod utils;
 
-
-//TODO: Major cleanup!!!
-//TODO: Macroize common routines.
-//TODO: Put common routines in util file.
 
 include!("utils_macros.rs");
 
@@ -66,7 +64,7 @@ fn get_ci_config_output_dir(term: &mut Box<term::StdoutTerminal>) -> PathBuf {
         Ok(path_buf) => {
             current_working_dir = path_buf;
         },
-        Err(err) => {
+        Err(err)     => {
             writeln_red!(term, "An error occurred while getting the current working directory: {}", err.description());
             get_current_working_dir_errored = true;
         }
@@ -130,7 +128,6 @@ fn main() {
     writeln_green!(term, "╔══════════════════════════════════════════════════════════╗");
     writeln_green!(term, "║         Welcome to the Trello Build Status Tool.         ║");
     writeln_green!(term, "╚══════════════════════════════════════════════════════════╝");
-
 
     ////////////////////////////////////////////////////////////
     //               Parse command line options               //
@@ -232,45 +229,9 @@ fn main() {
     let mut board_info = trello::TrelloBoardInfo::new();
     let mut board_list = trello::MembersMeBoardsResponse::new();
 
-
-    //Select/create board
-    let status = utils::StatusPrint::from_str(&mut term, "Acquiring board list from Trello.");
-    match trello::acquire_board_list(&config, &mut board_list) {
-        Ok(_)    => {
-            status.success(&mut term);
-        },
-        Err(err) => {
-            status.error(&mut term);
-            panic!(format!("An error occurred while communicating with Trello: {}", err));
-        },
-    }
-
-    let is_board_created = trello::board_select_or_create(&mut term, &mut config, &mut board_list, &mut board_info);
-
-    //Select/create board list
-    if !is_board_created {
-        let status = utils::StatusPrint::from_str(&mut term, "Acquiring board's lists list from Trello.");
-        let mut board_lists_list = trello::BoardsResponse::new();
-        match trello::acquire_board_lists_list(&config, &board_info, &mut board_lists_list) {
-            Ok(_)    => {
-                status.success(&mut term);
-            },
-            Err(err) => {
-                status.error(&mut term);
-                panic!(format!("An error occurred while communicating with Trello: {}", err));
-            },
-        }
-
-        trello::board_list_select_or_create(&mut term, &mut config, &mut board_lists_list, &mut board_info);
-    }
-
-    //TODO: Different behavior on fail?
-    //create labels
-    match trello::create_pass_fail_labels(&config, &mut board_info){
-        Ok(_) => (),
-        Err(err) => {panic!("Error creating the labels: {}", err);}
-    }
-
+    let is_board_created = trello::setup_board(&mut term,  &mut config, &mut board_info);
+                           trello::setup_list(&mut term,   &mut config, &mut board_info, &is_board_created);
+                           trello::setup_labels(&mut term, &mut config, &mut board_info, &is_board_created);
 
     ////////////////////////////////////////////////////////////
     //               Setup Travis-CI/Appveyor                 //
@@ -296,10 +257,12 @@ fn main() {
 
         //Get Travis-CI/Appveyor config file output dir.
         let mut ci_config_output_dir = get_ci_config_output_dir(&mut term);
-
-        //TODO: Major cleanup, this is a mess....
         match option {
             1 => {
+                let mut wer = true;//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                let mut werr = true;/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                let mut werrr = true;////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                travis_ci::setup_ci_config(&mut term, &mut config, &mut config_path, &mut ci_config_output_dir, &mut wer, &mut werr, &mut werrr);
                 match travis_ci::create_travis_yml(&mut term, &config, &mut board_info, &mut ci_config_output_dir) {
                     Ok(())   => {
                         writeln_green!(term, ".travis.yml creation was successful.");

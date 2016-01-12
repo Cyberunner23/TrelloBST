@@ -22,3 +22,18 @@
     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
     SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
+
+
+//extern crate term;
+//
+//use config;
+//use trello;
+//use utils;
+//
+//
+//pub fn setup_api(term: &mut Box<term::StdoutTerminal>, config: &mut config::TrelloBSTAPIConfig) {
+//
+//    if config.appveyor_api_token.is_empty() {
+//
+//    }
+//}
