@@ -24,6 +24,7 @@
 */
 
 
+use std::collections::BTreeMap;
 use std::error::Error;
 use std::io;
 use std::io::{Cursor, Write};
@@ -70,7 +71,7 @@ pub struct TravisEncryptedVars {
     pub trello_app_token: String,
     pub list_id:          String,
     pub build_pass_id:    String,
-    pub build_fail_id:    String,
+    pub build_fail_id:    String
 }
 
 #[allow(dead_code)]
@@ -81,6 +82,17 @@ pub struct RepoResponse {
 }
 
 
+pub struct ParsedHooksResponse {
+    hooks: Vec<Hook>
+}
+
+pub struct Hook {
+    id:     u64,
+    name:   String,
+    active: bool
+}
+
+
 ////////////////////////////////////////////////////////////
 //                         Impls                          //
 ////////////////////////////////////////////////////////////
@@ -88,9 +100,155 @@ pub struct RepoResponse {
 impl RepoResponse {
     pub fn new() -> RepoResponse {
         RepoResponse {
-            key:         "".to_string(),
-            fingerprint: "".to_string(),
+            key:         String::new(),
+            fingerprint: String::new()
         }
+    }
+}
+
+impl ParsedHooksResponse {
+
+    pub fn new() -> ParsedHooksResponse {
+        ParsedHooksResponse{
+            hooks: Vec::new()
+        }
+    }
+
+    pub fn from_json(json_data: &String) -> Result<ParsedHooksResponse, &'static str> {
+
+        let mut tmp_parsed_hooks_response = ParsedHooksResponse::new();
+
+        //Parse
+        let data: Value;
+        match serde_json::from_str(&json_data){
+            Ok(_data) => data = _data,
+            Err(err)  => {
+                return Err("Error parsing the JSON data")
+            }
+        }
+
+        //Get JSON object
+        let mut object: BTreeMap<String, Value>;
+        match data.as_object().ok_or("Error: JSON data does not describe an object.") {
+            Ok(_object) => {
+                object  = _object.clone();
+            },
+            Err(err)    => {
+                return Err(err);
+            }
+        }
+
+        //Get "hooks" field
+        let hooks_value: Value;
+        match object.get("hooks").ok_or("Error: The \"hooks\" field has not been found in the JSON data.") {
+            Ok(_hooks_value) => {
+                hooks_value  = _hooks_value.clone();
+            }
+            Err(err)        => {
+                return Err(err)
+            }
+        }
+
+        //Get "hooks" content
+        let hooks_array: Vec<Value>;
+        match hooks_value.as_array().ok_or("Error: The \"hooks\" field does not describe an array.") {
+            Ok(_hooks_array) => {
+                hooks_array  = _hooks_array.clone();
+            }
+            Err(err)        => {
+                return Err(err)
+            }
+        }
+
+        //For each hook
+        for hook in &hooks_array {
+
+            //Get hook object
+            let mut hook_object: BTreeMap<String, Value>;
+            hook_object = BTreeMap::new();
+            match hook.as_object().ok_or("Error: An entry in the \"hook\" field does not describe an object.") {
+                Ok(_hook_object) => {
+                    hook_object  = _hook_object.clone();
+                },
+                Err(err)    => {
+                    return Err(err);
+                }
+            }
+
+            //Get "id" value
+            let id_value: Value;
+            match hook_object.get("id").ok_or("Error: Failed to acquire the \"id\" field of a \"hook\" field.") {
+                Ok(_id_value) => {
+                    id_value  = _id_value.clone();
+                }
+                Err(err)        => {
+                    return Err(err)
+                }
+            }
+
+            let id_u64: u64;
+            match id_value.as_u64().ok_or("Error: Failed to convert the value of the \"id\" field to a u64.") {
+                Ok(_id_u64) => {
+                    id_u64  = _id_u64;
+                }
+                Err(err)        => {
+                    return Err(err)
+                }
+            }
+
+            //Get "name" field
+            let name_value: Value;
+            match hook_object.get("name").ok_or("Error: Failed to acquire the \"name\" field of a \"hook\" field.") {
+                Ok(_name_value) => {
+                    name_value  = _name_value.clone();
+                }
+                Err(err)        => {
+                    return Err(err)
+                }
+            }
+
+            let mut name_string = String::new();
+            match name_value.as_string().ok_or("Error: Failed to convert the value of the \"name\" field to a string.") {
+                Ok(_name_string) => {
+                    name_string.push_str(_name_string.clone());
+                }
+                Err(err)        => {
+                    return Err(err)
+                }
+            }
+
+            //Get "active" field and if null, assume false.
+            let active_value: Value;
+            match hook_object.get("active").ok_or("Error: Failed to acquire the \"active\" field of a \"hook\" field.") {
+                Ok(_active_value) => {
+                    active_value  = _active_value.clone();
+                }
+                Err(err)        => {
+                    return Err(err)
+                }
+            }
+
+            let active_bool: bool;
+            if active_value.is_null() {
+                active_bool = false;
+            } else {
+                match active_value.as_boolean().ok_or("Error: Failed to convert the value of the \"active\" field to a bool.") {
+                    Ok(_active_bool) => {
+                        active_bool  = _active_bool;
+                    }
+                    Err(err)        => {
+                        return Err(err)
+                    }
+                }
+            }
+
+            tmp_parsed_hooks_response.hooks.push(Hook{
+                id:     id_u64,
+                name:   name_string,
+                active: active_bool
+            });
+        }
+        Ok(tmp_parsed_hooks_response)
     }
 }
 
@@ -272,34 +430,30 @@ after_failure:
 }
 
 //TODO: Different error behavior?
-pub fn setup_ci_config(term:                 &mut Box<term::StdoutTerminal>,
-                       config:               &mut config::TrelloBSTAPIConfig,
-                       config_path:          &mut config::TrelloBSTConfigPath,
-                       ci_config_output_dir: &mut PathBuf,
-                       is_using_config_file: &mut bool,
-                       is_api_setup_failed:  &mut bool,
-                       is_file_create_fail:  &mut bool) -> (){
+pub fn setup_ci_config(term:             &mut Box<term::StdoutTerminal>,
+                       config:           &mut config::TrelloBSTAPIConfig,
+                       config_file_path: &mut PathBuf,
+                       output_direcrory: &mut PathBuf) -> (){
 
-    ci_config_output_dir.push(".travis.yml");
+    output_direcrory.push(".travis.yml");
 
     //Get access token / API key
-    match setup_api(term, is_using_config_file, config){
+    match setup_api(term, config_file_path, config){
         Ok(_)    => (),
         Err(err) => {
-            writeln_red!(term, "Error setting up the travis-CI API key: {}", err);
+            writeln_red!(term, "Error setting up the travis-CI API token: {}", err);
             writeln_red!(term, "Configuration file won't be used...");
-            *is_api_setup_failed = true;
             return ()
         }
     }
 
-    if *is_using_config_file {
-        match config::TrelloBSTAPIConfig::save_config(&config_path, &config) {
+    if *config_file_path != PathBuf::new() {
+        match config::TrelloBSTAPIConfig::save_config(&config_file_path, &config) {
             Ok(_)    => (),
             Err(err) => {
                 writeln_red!(term, "Error: {}", err);
                 writeln_red!(term, "Configuration file won't be used...");
-                *is_using_config_file = false;
+                *config_file_path = PathBuf::new();
             }
         }
     }
@@ -315,13 +469,13 @@ pub fn setup_ci_config(term:                 &mut Box<term::StdoutTerminal>,
     }
 }
 
-pub fn setup_api(term: &mut Box<term::StdoutTerminal>, is_using_config_file: &mut bool, config: &mut config::TrelloBSTAPIConfig) -> Result<(), &'static str> {
+pub fn setup_api(term: &mut Box<term::StdoutTerminal>, config_file_path: &mut PathBuf, config: &mut config::TrelloBSTAPIConfig) -> Result<(), &'static str> {
 
     if config.travis_access_token.is_empty() {
 
         //Get github token
         let mut github_token = String::new();
-        if *is_using_config_file {
+        if *config_file_path != PathBuf::new() {
             get_input_string!(term, &mut github_token, "Travis-CI currently uses a GitHub access token to authenticate and generate an API key,
     please log into GitHub and go to https://github.com/settings/tokens and generate a new
     token and input it here. (Note that once the Travis-CI API key is acquired, the GitHub
@@ -342,7 +496,7 @@ pub fn setup_api(term: &mut Box<term::StdoutTerminal>, is_using_config_file: &mu
         let mut content_length: Vec<u8> = Vec::new();
 
         content_length.push(20 + github_token.len() as u8);
-        header.set_raw("User-Agent",     vec![b"Travis__sdfMyClient/1.0.0".to_vec()]);
+        header.set_raw("User-Agent",     vec![b"Travis_TrelloBST/1.0.0".to_vec()]);
         header.set_raw("Accept",         vec![b"application/vnd.travis-ci.2+json".to_vec()]);
         header.set_raw("Host",           vec![b"api.travis-ci.org".to_vec()]);
         header.set_raw("Content-Type",   vec![b"application/json".to_vec()]);
@@ -351,17 +505,53 @@ pub fn setup_api(term: &mut Box<term::StdoutTerminal>, is_using_config_file: &mu
         match utils::rest_api_call_post_with_header(&api_call, header) {
             Ok(_response_body) => response_body = _response_body,
             Err(err)           => {
-                *is_using_config_file = false;
+                *config_file_path = PathBuf::new();
                 return Err(err)
             }
         }
-
-        println!("{}", response_body);
 
         match utils::get_single_json_value_as_string(&response_body, "access_token") {
             Ok(value) => config.travis_access_token = value,
             Err(err)  => return Err(err)
         }
+
+
+
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        let mut api_call2      = format!("https://api.travis-ci.org/hooks");
+        let mut auth           = format!("token {}", config.travis_access_token);
+        let mut response_body2 = String::new();
+        let mut header2        = Headers::new();
+
+        header2.set_raw("User-Agent",    vec![b"Travis_TrelloBST/1.0.0".to_vec()]);
+        header2.set_raw("Accept",        vec![b"application/vnd.travis-ci.2+json".to_vec()]);
+        header2.set_raw("Authorization", vec![auth.into_bytes()]);
+        header2.set_raw("Host",          vec![b"api.travis-ci.org".to_vec()]);
+        header2.set_raw("Content-Type",  vec![b"application/json".to_vec()]);
+
+        match utils::rest_api_call_get_with_header(&api_call2, header2) {
+            Ok(_response_body) => response_body2 = _response_body,
+            Err(err)           => {
+                *config_file_path = PathBuf::new();
+                return Err(err)
+            }
+        }
+
+        println!("--------------- {}", response_body2);
+
+        let mut hooks: ParsedHooksResponse;
+        match ParsedHooksResponse::from_json(&response_body2) {
+            Ok(_hooks) => {
+                hooks = _hooks;
+            }
+            Err(err) => {
+                writeln_red!(term, "////////////////////// {}", err);
+            }
+        }
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
     }
 
     Ok(())

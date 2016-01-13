@@ -151,22 +151,11 @@ impl BoardsLabelsResponse {
 ////////////////////////////////////////////////////////////
 
 pub fn setup_api(term: &mut Box<term::StdoutTerminal>, config: &mut config::TrelloBSTAPIConfig) {
-
-    if config.trello_api_key.is_empty() || config.trello_app_token.is_empty() {
-        println!("Setting up Trello API Keys...");
-    }
-
-    if config.trello_api_key.is_empty() {
-        get_input_string!(term, &mut config.trello_api_key, "Log into Trello and enter your API key from https://trello.com/app-key : ");
-    }
-
     if config.trello_app_token.is_empty(){
-        print!("Enter your app token from https://trello.com/1/authorize?response_type=token&key={}&scope=read%2Cwrite&expiration=never&name=TrelloBST : ", config.trello_api_key);
-        match_to_none!(term.flush());
-        get_input_string!(term, &mut config.trello_app_token, "");
+        println!("Setting up Trello API Token...");
+        get_input_string!(term, &mut config.trello_app_token, "Log in to Trello.com and enter the app token from https://trello.com/1/authorize?response_type=token&key=0e190833c4db5fd7d3b0b26ae642d6fa&scope=read%2Cwrite&expiration=never&name=TrelloBST : ");
     }
 }
-
 
 
 pub fn setup_board(term: &mut Box<term::StdoutTerminal>, config: &mut config::TrelloBSTAPIConfig, board_info: &mut TrelloBoardInfo) -> bool{
@@ -187,8 +176,6 @@ pub fn setup_board(term: &mut Box<term::StdoutTerminal>, config: &mut config::Tr
     //Board selection.
     board_selection(term, config, &mut board_list, board_info)
 }
-
-
 
 #[allow(unused_assignments)]
 pub fn acquire_board_list(config: &config::TrelloBSTAPIConfig, board_list: &mut MembersMeBoardsResponse) -> Result<(), &'static str>{
@@ -286,8 +273,6 @@ pub fn create_board(term: &mut Box<term::StdoutTerminal>, config: &config::Trell
 }
 
 
-
-
 pub fn setup_list(term: &mut Box<term::StdoutTerminal>, config: &mut config::TrelloBSTAPIConfig, board_info: &mut TrelloBoardInfo, is_board_created: &bool) {
 
     if !*is_board_created {
@@ -317,8 +302,6 @@ pub fn setup_list(term: &mut Box<term::StdoutTerminal>, config: &mut config::Tre
             }
         }
     }
-
-
 }
 
 #[allow(unused_assignments)]
@@ -418,8 +401,6 @@ pub fn create_list(term: &mut Box<term::StdoutTerminal>, config: &config::Trello
 }
 
 
-
-
 pub fn setup_labels(term: &mut Box<term::StdoutTerminal>, config: &mut config::TrelloBSTAPIConfig, board_info: &mut TrelloBoardInfo, is_board_created: &bool) {
 
     if !*is_board_created {
@@ -462,6 +443,7 @@ pub fn setup_labels(term: &mut Box<term::StdoutTerminal>, config: &mut config::T
 
 }
 
+//TODO?: Create a manual parser.
 pub fn acquire_board_label_list(config: &config::TrelloBSTAPIConfig, board_info: &TrelloBoardInfo, board_label_list: &mut BoardsLabelsResponse) -> Result<(), &'static str> {
 
     let     api_call       = format!("https://api.trello.com/1/boards/{}?labels=all&label_fields=name,color&fields=none&key={}&token={}",board_info.board_id, config.trello_api_key, config.trello_app_token);
@@ -559,6 +541,7 @@ pub fn board_label_selection_fail(term: &mut Box<term::StdoutTerminal>, config: 
 }
 
 //NOTE: A label with no color is currently not supported, Serde-json feakes out when expecting a string and receiving a null
+//TODO?: Create a manual parser in acquire_board_label_list.
 pub fn create_label_pass(term: &mut Box<term::StdoutTerminal>, config: &config::TrelloBSTAPIConfig, board_info: &mut TrelloBoardInfo) -> Result<(), &'static str> {
 
     let mut label_name       = String::new();
@@ -606,6 +589,7 @@ pub fn create_label_pass(term: &mut Box<term::StdoutTerminal>, config: &config::
 }
 
 //NOTE: A label with no color is currently not supported, Serde-json feakes out when expecting a string and receiving a null
+//TODO?: Create a manual parser in acquire_board_label_list.
 pub fn create_label_fail(term: &mut Box<term::StdoutTerminal>, config: &config::TrelloBSTAPIConfig, board_info: &mut TrelloBoardInfo) -> Result<(), &'static str> {
 
     let mut label_name       = String::new();

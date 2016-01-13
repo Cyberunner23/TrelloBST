@@ -24,7 +24,11 @@
 */
 
 use std::collections::BTreeMap;
+use std::env;
+use std::fs;
+use std::fs::{File, OpenOptions};
 use std::io::Read;
+use std::path::PathBuf;
 
 extern crate hyper;
 use hyper::Client;
@@ -95,6 +99,50 @@ impl StatusPrint {
 //                       Functions                        //
 ////////////////////////////////////////////////////////////
 
+pub fn is_valid_dir(term: &mut Box<term::StdoutTerminal>, path: &PathBuf) -> bool {
+
+    match fs::metadata(&path) {
+        Ok(metadata) => {
+            if !metadata.is_dir() {
+                return false;
+            }
+        },
+        Err(_)       => {
+            writeln_red!(term, "Error: Failed to acquire directory's metadata.");
+            return false;
+        }
+    }
+
+    //Test if we can write a file to this directory
+    let mut counter = 0;
+    loop {
+        //Generate a file name.
+        let     tmp_file_name: String  = format!("ab{}ba.tmp", counter);
+        let mut tmp_file_path: PathBuf = path.clone();
+        tmp_file_path.push(tmp_file_name);
+
+        //If file does not exist, check if we can create it with r/w permissions.
+        if !tmp_file_path.exists() {
+            if is_valid_file_path(term, &tmp_file_path) {
+                match fs::remove_file(&tmp_file_path) {
+                    Ok(_)  => (),
+                    Err(_) => {writeln_red!(term, "Error: Failed to delete test file: {}", tmp_file_path.to_str().unwrap());}
+                }
+                break;
+            } else {return false;}
+        }
+        counter += 1;
+    }
+    return true;
+}
+
+pub fn is_valid_file_path(term: &mut Box<term::StdoutTerminal>, path: &PathBuf) -> bool {
+match OpenOptions::new().read(true).write(true).create(true).open(path.as_path()) {
+        Ok(_)  => {return true;}
+        Err(_) => {return false;}
+    }
+}
+
 #[allow(dead_code)]
 pub fn rest_api_call_get(api_call: &String) -> Result<String, &'static str> {
 
@@ -113,7 +161,46 @@ pub fn rest_api_call_get(api_call: &String) -> Result<String, &'static str> {
         Err(_)  => return Err("Error calling the API.")
     }
 
-    match response.read_to_string(&mut response_body){
+    match response.read_to_string(&mut response_body) {
+        Ok(_)  => (),
+        Err(_) => return Err("Error converting the API response to a string.")
+    }
+
+    if response_body == "invalid key" {
+        return Err("Error, the API key is invalid.");
+    }
+
+    if response_body == "invalid token" {
+        return Err("The app token is invalid.");
+    }
+
+    Ok(response_body)
+}
+
+#[allow(dead_code)]
+pub fn rest_api_call_get_with_header(api_call: &String, header: Headers) -> Result<String, &'static str> {
+
+    let     http_client   = Client::new();
+    let mut response:       Response;
+    let mut response_body = String::new();
+    let     api_call_url:   Url;
+
+    match api_call.into_url() {
+        Ok(url) => api_call_url = url,
+        Err(_)  => return Err("Error while parsing API call url.")
+    }
+
+    match http_client.get(api_call_url)
+                     .headers(header)
+                     .send() {
+        Ok(res) => response = res,
+        Err(err)  => {
+           println!("----------------------- {:?}", err);
+            return Err("Error calling the API.");
+        }
+    }
+
+    match response.read_to_string(&mut response_body) {
         Ok(_)  => (),
         Err(_) => return Err("Error converting the API response to a string.")
     }
@@ -200,7 +287,6 @@ pub fn rest_api_call_post_with_header(api_call: &String, header: Headers) -> Res
 }
 
 #[allow(dead_code)]
-#[allow(unused_variables)]
 pub fn get_single_json_value_as_string(json_string: &String, field: &str) -> Result<String, &'static str>{
 
     let data: Value;
@@ -231,7 +317,6 @@ pub fn get_single_json_value_as_string(json_string: &String, field: &str) -> Res
         }
     }
 
-    let value: String;
     match json_value.as_string().ok_or("Error: The field's value is not a string.") {
         Ok(_value) => Ok(_value.to_string()),
         Err(err)   => Err(err)

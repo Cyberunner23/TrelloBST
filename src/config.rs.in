@@ -45,10 +45,6 @@ include!("utils_macros.rs");
 //                        Structs                         //
 ////////////////////////////////////////////////////////////
 
-pub struct TrelloBSTConfigPath {
-    pub config_path: PathBuf
-}
-
 
 #[derive(Serialize, Deserialize)]
 pub struct TrelloBSTAPIConfig {
@@ -63,96 +59,6 @@ pub struct TrelloBSTAPIConfig {
 //                         Impls                          //
 ////////////////////////////////////////////////////////////
 
-impl TrelloBSTConfigPath {
-
-    pub fn new() -> TrelloBSTConfigPath {
-        TrelloBSTConfigPath {
-            config_path: PathBuf::new(),
-        }
-    }
-
-    pub fn get_config_dir(term: &mut Box<term::StdoutTerminal>, is_using_config_file: &mut bool, is_using_custom_config: &bool, path_str: &str) -> Result<TrelloBSTConfigPath, ()>{
-        if *is_using_custom_config {
-            let path     = Path::new(path_str);
-            let status   = utils::StatusPrint::from_string(term, format!("Looking for the configuration file: {}", path_str.to_string()));
-            match TrelloBSTConfigPath::try_custom_config_path(path) {
-                Ok(config_path) => {
-                    status.success(term);
-                    return Ok(config_path);
-                },
-                Err(err)        => {
-                    *is_using_config_file = false;
-                    status.error(term);
-                    writeln_red!(term, "An error occurred: {}", err);
-                    writeln_red!(term, "Configuration file won't be used...");
-                    return Err(());
-                },
-            };
-        } else {
-            let status = utils::StatusPrint::from_str(term, "Looking for the configuration file in default location...");
-            match TrelloBSTConfigPath::try_default_config_path() {
-                Ok(config_path) => {
-                    status.success(term);
-                    return Ok(config_path);
-                },
-                Err(err)        => {
-                    *is_using_config_file = false;
-                    status.error(term);
-                    writeln_red!(term, "An error occurred: {}", err);
-                    writeln_red!(term, "Configuration file won't be used...");
-                    return Err(());
-                },
-            };
-        }
-    }
-
-    pub fn try_default_config_path() -> Result<TrelloBSTConfigPath, &'static str> {
-
-        //Check for an existing config file
-        let mut trellobst_config_path = TrelloBSTConfigPath::new();
-        let mut _home_dir_found:        bool;
-
-        match env::home_dir() {
-            Some(home_dir) => {
-                trellobst_config_path.config_path = home_dir;
-                _home_dir_found                   = true;
-            },
-            None           => {
-                _home_dir_found = false;
-            }
-        };
-
-        if _home_dir_found {
-            trellobst_config_path.config_path.push(".TrelloBST.cfg");
-            //Try to open the file with r/w permissions
-            match OpenOptions::new().read(true).write(true).create(true).open(trellobst_config_path.config_path.as_path()) {
-                Ok(_)  => {
-                    Ok(trellobst_config_path)
-                }
-                Err(_) => {
-                    Err("Cannot open/create configuration file at default location.")
-                }
-            }
-        } else {
-            Err("Cannot open/create configuration file at default location.")
-        }
-    }
-
-    pub fn try_custom_config_path(config_path: &Path) -> Result<TrelloBSTConfigPath, &'static str>{
-        //Try to open the file with r/w permissions
-        match OpenOptions::new().read(true).write(true).create(true).open(config_path) {
-            Ok(_)  => {
-                Ok(TrelloBSTConfigPath{config_path: PathBuf::from(config_path)})
-            }
-            Err(_) => {
-                Err("Cannot open/create configuration file at custom location.")
-            }
-        }
-    }
-
-}
-
-
 impl TrelloBSTAPIConfig {
 
     pub fn new() -> TrelloBSTAPIConfig {
@@ -164,10 +70,10 @@ impl TrelloBSTAPIConfig {
         }
     }
 
-    pub fn from_file(config_path: &TrelloBSTConfigPath) -> Result<TrelloBSTAPIConfig, &'static str>{
+    pub fn from_file(config_file_path: &PathBuf) -> Result<TrelloBSTAPIConfig, &'static str>{
 
         let mut file: File;
-        match File::open(config_path.config_path.as_path()) {
+        match File::open(config_file_path.as_path()) {
             Ok(_file) => {
                 file = _file;
             }
@@ -204,8 +110,8 @@ impl TrelloBSTAPIConfig {
         }
     }
 
-    pub fn save_config(config_path: &TrelloBSTConfigPath, config: &TrelloBSTAPIConfig) -> Result<(), &'static str> {
-        match File::create(config_path.config_path.as_path()) {
+    pub fn save_config(config_file_path: &PathBuf, config: &TrelloBSTAPIConfig) -> Result<(), &'static str> {
+        match File::create(config_file_path.as_path()) {
             Ok(file)  => {
                 //TODO: better error reporting
                 let     config_json = serde_json::to_string(&config).unwrap();

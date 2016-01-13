@@ -31,7 +31,6 @@ use std::io::{self, Write};
 use std::path::PathBuf;
 use std::process::exit;
 
-
 extern crate clap;
 use clap::{Arg, App};
 
@@ -41,9 +40,7 @@ use hyper::header::Headers;
 extern crate serde;
 extern crate serde_json;
 
-
 extern crate term;
-
 
 mod appveyor;
 mod config;
@@ -52,72 +49,11 @@ mod trello;
 mod utils;
 
 
+////////////////////////////////////////////////////////////
+//                         Macros                         //
+////////////////////////////////////////////////////////////
+
 include!("utils_macros.rs");
-
-//TODO: Use use input util.
-fn get_ci_config_output_dir(term: &mut Box<term::StdoutTerminal>) -> PathBuf {
-
-    //Get current working directory.
-    let mut current_working_dir: PathBuf    = PathBuf::new();
-    let mut get_current_working_dir_errored = false;
-    match env::current_dir() {
-        Ok(path_buf) => {
-            current_working_dir = path_buf;
-        },
-        Err(err)     => {
-            writeln_red!(term, "An error occurred while getting the current working directory: {}", err.description());
-            get_current_working_dir_errored = true;
-        }
-    }
-
-    //Get input
-    let mut option_string = String::new();
-    loop{
-
-        if get_current_working_dir_errored {
-            print!("Please enter the directory in which you want the configuration file to be outputted:");
-        } else {
-            print!("Please enter the directory in which you want the configuration file to be outputted. [The default path is the current working directory: {} ]: ", current_working_dir.to_str().unwrap());
-        }
-
-        match_to_none!(term.flush());
-
-        loop {
-
-            match io::stdin().read_line(&mut option_string) {
-                Ok(_)  => option_string = option_string.trim_matches('\n').to_string(),
-                Err(_) => {panic!("Error while reading the input.");}
-            }
-
-            if option_string.is_empty() {
-                if get_current_working_dir_errored {
-                    writeln_red!(term, "Please enter a path.");
-                } else {
-                    option_string = current_working_dir.to_str().unwrap().to_string();
-                    break;
-                }
-            } else {
-                break;
-            }
-        }
-
-        match fs::metadata(PathBuf::from(&option_string)) {
-            Ok(metadata) => {
-                if metadata.is_dir() {
-                    break;
-                } else {
-                    writeln_red!(term, "Error: The path provided is not a valid path.");
-                }
-            },
-            Err(_)       => {
-                writeln_red!(term, "Error: Failed to acquire directory's metadata, please enter a valid path.");
-            }
-        }
-
-    }
-
-    PathBuf::from(option_string)
-}
 
 
 fn main() {
@@ -133,21 +69,26 @@ fn main() {
     //               Parse command line options               //
     ////////////////////////////////////////////////////////////
 
-    let mut is_using_config_file   = true;
-    let mut is_using_custom_config = false;
+    let mut config_file_path = PathBuf::new();
+    let mut output_direcrory = PathBuf::new();
 
     let matches = App::new("TrelloBST")
         .version(trellobst_version)
         .arg(Arg::with_name("CONFIG")
             .short("c")
             .long("config")
-            .help("Sets a custom config file.")
+            .help("Sets a custom TrelloBST configuration file.")
             .takes_value(true))
         .arg(Arg::with_name("NO-CONFIG")
             .short("n")
             .long("no-config")
-            .help("Won't use a config file.")
+            .help("Won't use a configuration file for TrelloBST.")
             .takes_value(false))
+        .arg(Arg::with_name("OUTPUT_DIR")
+            .short("o")
+            .long("output")
+            .help("Sets the output directory for the CI configuration file.")
+            .takes_value(true))
         .get_matches();
 
     if matches.is_present("CONFIG") && matches.is_present("NO-CONFIG") {
@@ -155,31 +96,65 @@ fn main() {
         exit(-1);
     }
 
-    if matches.is_present("NO-CONFIG") {
-        is_using_config_file   = false;
-    }
-
     if matches.is_present("CONFIG") {
-        is_using_config_file   = true;
-        is_using_custom_config = true;
+        config_file_path = PathBuf::from(matches.value_of("CONFIG").unwrap());
+        let status = utils::StatusPrint::from_string(&mut term, format!("Reading/Creating the configuration file at {}", config_file_path.to_str().unwrap()));
+        if !utils::is_valid_file_path(&mut term, &config_file_path) {
+            status.error(&mut term);
+            writeln_red!(term, "Error: Please enter a valid path for the output file. (Including read/write permissions.)");
+            exit(-1);
+        }
+        status.success(&mut term);
+    } else if !matches.is_present("NO-CONFIG") {
+
+        let is_read_create_success: bool;
+        let status = utils::StatusPrint::from_str(&mut term, "Reading/Creating the configuration file at the default location.");
+        match env::home_dir() {
+            Some(home_dir) => {
+                config_file_path = home_dir;
+                config_file_path.push(".TrelloBST.cfg");
+                if utils::is_valid_file_path(&mut term, &config_file_path) {
+                    status.success(&mut term);
+                    is_read_create_success = true;
+                } else {
+                    status.error(&mut term);
+                    is_read_create_success = false;
+                }
+            }
+            None           => {
+                status.error(&mut term);
+                writeln_red!(term, "Error: Failed to acquire the home directory.");
+                is_read_create_success = false;
+            }
+        }
+
+        if !is_read_create_success {
+            writeln_red!(term, "Error: Reading/Creating configuration file at default location failed. Falling back to ./.TrelloBST.cfg");
+            let status = utils::StatusPrint::from_str(&mut term, "Reading/Creating the configuration file at ./.TrelloBST.cfg");
+            config_file_path = PathBuf::from("./.TrelloBST.cfg".to_string());
+            if utils::is_valid_file_path(&mut term, &config_file_path) {
+                status.success(&mut term);
+            } else {
+                status.error(&mut term);
+                writeln_red!(term, "Error: Reading/Creating configuration file at ./.TrelloBST.cfg failed.");
+                exit(-2);
+            }
+        }
     }
 
-
-    ////////////////////////////////////////////////////////////
-    //                   Get config path                      //
-    ////////////////////////////////////////////////////////////
-
-    let mut config_path = config::TrelloBSTConfigPath::new();
-
-    match config::TrelloBSTConfigPath::get_config_dir(&mut term, &mut is_using_config_file, &is_using_custom_config, matches.value_of("CONFIG").unwrap_or("")) {
-        Ok(_config_path) => {
-            config_path = _config_path;
+    if matches.is_present("OUTPUT_DIR") {
+        output_direcrory = PathBuf::from(matches.value_of("OUTPUT_DIR").unwrap());
+        if !utils::is_valid_dir(&mut term, &output_direcrory) {
+            writeln_red!(term, "Error: Please enter a valid path for the output directory. (Including read/write permissions.)");
+            exit(-1);
         }
-        Err(_)           => {
-            is_using_config_file = false;
+    } else {
+        output_direcrory = PathBuf::from("./");
+        if !utils::is_valid_dir(&mut term, &output_direcrory) {
+            writeln_red!(term, "Error: Current directory is invalid. (Needs read/write permissions.)");
+            exit(-1);
         }
     }
-
 
     ////////////////////////////////////////////////////////////
     //                     Parse config                       //
@@ -187,9 +162,9 @@ fn main() {
 
     let mut config = config::TrelloBSTAPIConfig::new();
 
-    if is_using_config_file {
+    if config_file_path != PathBuf::new() {
         let status = utils::StatusPrint::from_str(&mut term, "Parsing the configuration file.");
-        match config::TrelloBSTAPIConfig::from_file(&config_path) {
+        match config::TrelloBSTAPIConfig::from_file(&config_file_path) {
             Ok(_config) => {
                 config = _config;
                 status.success(&mut term);
@@ -198,7 +173,7 @@ fn main() {
                 status.error(&mut term);
                 writeln_red!(term, "An error occurred: {}", err);
                 writeln_red!(term, "Configuration file won't be used...");
-                is_using_config_file = false;
+                config_file_path = PathBuf::new()
             }
         }
     }
@@ -210,13 +185,13 @@ fn main() {
 
     trello::setup_api(&mut term, &mut config);
 
-    if is_using_config_file{
-        match config::TrelloBSTAPIConfig::save_config(&config_path, &config) {
+    if config_file_path != PathBuf::new() {
+        match config::TrelloBSTAPIConfig::save_config(&config_file_path, &config) {
             Ok(_)    => (),
             Err(err) => {
                 writeln_red!(term, "Error: {}", err);
                 writeln_red!(term, "Configuration file won't be used...");
-                is_using_config_file = false;
+                config_file_path = PathBuf::new()
             }
         }
     }
@@ -243,7 +218,7 @@ fn main() {
         println!("For which continuous integration service do you want a configuration file for?");
         println!("[1] Travis-CI");
         println!("[2] AppVeyor");
-        writeln_red!(term, "[3] Quit.");
+        writeln_red!(term, "[0] Quit.");
 
         let mut option: usize = 0;
         loop {
@@ -256,14 +231,11 @@ fn main() {
         }
 
         //Get Travis-CI/Appveyor config file output dir.
-        let mut ci_config_output_dir = get_ci_config_output_dir(&mut term);
+        //let mut ci_config_output_dir = get_ci_config_output_dir(&mut term);
         match option {
             1 => {
-                let mut wer = true;//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                let mut werr = true;/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                let mut werrr = true;////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                travis_ci::setup_ci_config(&mut term, &mut config, &mut config_path, &mut ci_config_output_dir, &mut wer, &mut werr, &mut werrr);
-                match travis_ci::create_travis_yml(&mut term, &config, &mut board_info, &mut ci_config_output_dir) {
+                travis_ci::setup_ci_config(&mut term, &mut config, &mut config_file_path, &mut output_direcrory);
+                match travis_ci::create_travis_yml(&mut term, &config, &mut board_info, &mut output_direcrory) {
                     Ok(())   => {
                         writeln_green!(term, ".travis.yml creation was successful.");
                     }
@@ -274,12 +246,12 @@ fn main() {
             },
             2 => {
                 //TODO: Set Appveyor config values and save config.
-                let mut appveyor_yml_path = ci_config_output_dir;
-                appveyor_yml_path.push("appveyor.yml");
+                //let mut appveyor_yml_path = ci_config_output_dir;
+                //appveyor_yml_path.push("appveyor.yml");
                 //TODO: Setup AppVeyor API Key
                 //TODO: Create appveyor.yml
             },
-            3 => exit(0),
+            0 => exit(0),
             _ => {panic!("An invalid option slipped through...");}
         }
     }
