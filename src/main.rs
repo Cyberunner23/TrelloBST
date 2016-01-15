@@ -223,22 +223,38 @@ fn main() {
         let mut option: usize = 0;
         loop {
             get_input_usize!(term, &mut option, "Please enter an option: ");
-            if option <= 3 && option > 0 {
+            if option <= 3 && option >= 0 {
                 break;
             }else {
                 writeln_red!(term, "Please enter a valid option.");
             }
         }
 
-        //Get Travis-CI/Appveyor config file output dir.
-        //let mut ci_config_output_dir = get_ci_config_output_dir(&mut term);
         match option {
             1 => {
-                travis_ci::setup_ci_config(&mut term, &mut config, &mut config_file_path, &mut output_direcrory);
-                match travis_ci::create_travis_yml(&mut term, &config, &mut board_info, &mut output_direcrory) {
-                    Ok(())   => {
-                        writeln_green!(term, ".travis.yml creation was successful.");
+
+                //Get access token / API key
+                match travis_ci::setup_api(&mut term, &mut config_file_path, &mut config) {
+                    Ok(_)    => (),
+                    Err(err) => {
+                        writeln_red!(term, "Error setting up the travis-CI API token: {}", err);
                     }
+                }
+
+                //Save access token.
+                if config_file_path != PathBuf::new() {
+                    match config::TrelloBSTAPIConfig::save_config(&config_file_path, &config) {
+                        Ok(_)    => (),
+                        Err(err) => {
+                            writeln_red!(term, "Error: {}", err);
+                            writeln_red!(term, "Configuration file won't be used...");
+                            config_file_path = PathBuf::new();
+                        }
+                    }
+                }
+
+                match travis_ci::create_travis_yml(&mut term, &config, &mut board_info, &mut output_direcrory) {
+                    Ok(())   => (),
                     Err(err) => {
                         writeln_red!(term, "Error {}", err);
                     }
@@ -256,5 +272,3 @@ fn main() {
         }
     }
 }
-
-

@@ -30,6 +30,7 @@ use std::io;
 use std::io::{Cursor, Write};
 use std::fs::File;
 use std::path::PathBuf;
+use std::process::exit;
 
 extern crate rustc_serialize;
 use self::rustc_serialize::base64::{self, ToBase64};
@@ -86,10 +87,12 @@ pub struct ParsedHooksResponse {
     hooks: Vec<Hook>
 }
 
+#[derive(Clone)]
 pub struct Hook {
-    id:     u64,
-    name:   String,
-    active: bool
+    id:         u64,
+    name:       String,
+    owner_name: String,
+    active:     bool
 }
 
 
@@ -217,6 +220,27 @@ impl ParsedHooksResponse {
                 }
             }
 
+            //Get "owner_name" field
+            let owner_name_value: Value;
+            match hook_object.get("owner_name").ok_or("Error: Failed to acquire the \"owner_name\" field of a \"hook\" field.") {
+                Ok(_owner_name_value) => {
+                    owner_name_value  = _owner_name_value.clone();
+                }
+                Err(err)        => {
+                    return Err(err)
+                }
+            }
+
+            let mut owner_name_string = String::new();
+            match owner_name_value.as_string().ok_or("Error: Failed to convert the value of the \"owner_name\" field to a string.") {
+                Ok(_owner_name_string) => {
+                    owner_name_string.push_str(_owner_name_string.clone());
+                }
+                Err(err)        => {
+                    return Err(err)
+                }
+            }
+
             //Get "active" field and if null, assume false.
             let active_value: Value;
             match hook_object.get("active").ok_or("Error: Failed to acquire the \"active\" field of a \"hook\" field.") {
@@ -243,9 +267,10 @@ impl ParsedHooksResponse {
             }
 
             tmp_parsed_hooks_response.hooks.push(Hook{
-                id:     id_u64,
-                name:   name_string,
-                active: active_bool
+                id:         id_u64,
+                name:       name_string,
+                owner_name: owner_name_string,
+                active:     active_bool
             });
         }
         Ok(tmp_parsed_hooks_response)
@@ -257,34 +282,164 @@ impl ParsedHooksResponse {
 //                       Functions                        //
 ////////////////////////////////////////////////////////////
 
+pub fn setup_api(term: &mut Box<term::StdoutTerminal>, config_file_path: &mut PathBuf, config: &mut config::TrelloBSTAPIConfig) -> Result<(), &'static str> {
+
+    if config.travis_access_token.is_empty() {
+
+        //Get github token
+        let mut github_token = String::new();
+        if *config_file_path != PathBuf::new() {
+            get_input_string!(term, &mut github_token, "Travis-CI currently uses a GitHub access token to authenticate and generate an API access token,
+    please log into GitHub and go to https://github.com/settings/tokens and generate a new
+    token and input it here. Note that \"read:org\", \"user:email\", \"repo_deployment\",
+    \"repo:status\", and \"write:repo_hook\" scopes are required. Also, once the Travis-CI API key is acquired, the GitHub
+    access token can be deleted.): ");
+        } else {
+            get_input_string!(term, &mut github_token, "Travis-CI currently uses a GitHub access token to authenticate and generate an API access token,
+    please log into GitHub and go to https://github.com/settings/tokens and generate a new
+    token and input it here. Note that \"read:org\", \"user:email\", \"repo_deployment\",
+    \"repo:status\", and \"write:repo_hook\" scopes are required: ");
+        }
+
+        //NOTE: Removes spaces from the github token, (copying a token from the github page adds a space in front...)
+        github_token = github_token.trim_matches(' ').to_string();
+
+        //Convert github token to travis api key
+        let mut api_call                = format!("https://api.travis-ci.org/auth/github?github_token={}", github_token);
+        let mut response_body           = String::new();
+        let mut header                  = Headers::new();
+        let mut content_length: Vec<u8> = Vec::new();
+
+        content_length.push(20 + github_token.len() as u8);
+        header.set_raw("User-Agent",     vec![b"Travis_TrelloBST/1.0.0".to_vec()]);
+        header.set_raw("Accept",         vec![b"application/vnd.travis-ci.2+json".to_vec()]);
+        header.set_raw("Host",           vec![b"api.travis-ci.org".to_vec()]);
+        header.set_raw("Content-Type",   vec![b"application/json".to_vec()]);
+        header.set_raw("Content-Length", vec![content_length]);
+
+        match utils::rest_api_call_post_with_header(&api_call, header) {
+            Ok(_response_body) => response_body = _response_body,
+            Err(err)           => {
+                *config_file_path = PathBuf::new();
+                return Err(err)
+            }
+        }
+
+        match utils::get_single_json_value_as_string(&response_body, "access_token") {
+            Ok(value) => config.travis_access_token = value,
+            Err(err)  => return Err(err)
+        }
+    }
+    Ok(())
+}
+
 pub fn create_travis_yml(term: &mut Box<term::StdoutTerminal>, config: &config::TrelloBSTAPIConfig, board_info: &mut trello::TrelloBoardInfo, ci_config_output_dir: &mut PathBuf) -> Result<(), &'static str> {
 
     //Get repo tag and public key
     let mut crypto_state = PKey::new();
     let mut repo_tag     = String::new();
-    get_repo_tag_and_pub_key(term, &mut crypto_state, &mut repo_tag);
+    get_repo_tag_and_pub_key(term, config, &mut crypto_state, &mut repo_tag);
 
     //Encrypt Variables
+    //Encrypt Variables
+    let status         = utils::StatusPrint::from_str(term, "Encrypting Trello API values.");
     let encrypted_vars = encrypt_vars(board_info, &config, &mut crypto_state);
+    status.success(term);
 
     //Generate file
-    generate_file(ci_config_output_dir, &encrypted_vars, &repo_tag)
+    generate_file(term, ci_config_output_dir, &encrypted_vars, &repo_tag)
 
 }
 
-pub fn get_repo_tag_and_pub_key(term: &mut Box<term::StdoutTerminal>, crypto_state: &mut PKey, repo_tag: &mut String) {
+pub fn get_repo_tag_and_pub_key(term: &mut Box<term::StdoutTerminal>, config: &config::TrelloBSTAPIConfig, crypto_state: &mut PKey, repo_tag: &mut String) {
+
+    //Get repos.
+    let      status = utils::StatusPrint::from_str(term, "Acquiring the repo list from Travis-CI.");
+    let mut  hooks  = ParsedHooksResponse::new();
+    match acquire_hooks(term, config)  {
+        Ok(_hooks) => {
+            hooks = _hooks;
+            status.success(term);
+        }
+        Err(err) => {
+            status.error(term);
+            println!("{}", err);
+        }
+    }
+
     loop{
-        //Repo Tag
-        get_input_string!(term, repo_tag, "Please enter the repo you wish to get the .travis.yml for in the form of user/repo (Note that it is case sensitive): ");
+
+        //Select repo.
+        println!("Which repo do you want the .travis.yml file for?");
+
+        let mut counter = 1;
+        for i in 0..hooks.hooks.len() {
+            println!("[{}] {}", i + 1, hooks.hooks[i].name);
+            counter += 1;
+        }
+        writeln_red!(term, "[0] Quit.",);
+
+        let mut option: usize = 0;
+        loop {
+
+            get_input_usize!(term, &mut option, "Please enter an option: ");
+
+            if option <= counter && option >= 0 {
+                break;
+            }else {
+                writeln_red!(term, "Please enter a valid option.");
+            }
+        }
+
+        let hook: Hook;
+        if option == 0 {
+            exit(0);
+        } else {
+            hook = hooks.hooks[option - 1].clone();
+        }
+
+        //Link repo.
+        if !hook.active {
+            let     status        = utils::StatusPrint::from_str(term, "Linking repo to Travis-CI.");
+            let     api_call      = format!("https://api.travis-ci.org/hooks/{}?hook[active]=true", hook.id);
+            let mut auth          = format!("token {}", config.travis_access_token);
+            let mut response_body = String::new();
+            let mut header        = Headers::new();
+
+            header.set_raw("User-Agent",    vec![b"Travis_TrelloBST/1.0.0".to_vec()]);
+            header.set_raw("Accept",        vec![b"application/vnd.travis-ci.2+json".to_vec()]);
+            header.set_raw("Authorization", vec![auth.into_bytes()]);
+            header.set_raw("Host",          vec![b"api.travis-ci.org".to_vec()]);
+            header.set_raw("Content-Type",  vec![b"application/json".to_vec()]);
+
+            let mut is_api_call_success = true;
+            match utils::rest_api_call_put_with_header(&api_call, header) {
+                Ok(_response_body) => {
+                    status.success(term);
+                    response_body = _response_body
+                }
+                Err(err)           => {
+                    status.error(term);
+                    writeln_red!(term, "There was an error linking the {} to travis-CI: {}", hook.name, err);
+                }
+            }
+        }
+
+        *repo_tag = format!("{}/{}", hook.owner_name, hook.name);
 
         //Public Key
+        let     status              = utils::StatusPrint::from_str(term, "Acquiring repo's public RSA key.");
         let     api_call            = format!("https://api.travis-ci.org/repos/{}/key", repo_tag);
         let mut response_body       = String::new();
         let mut is_api_call_success = true;
 
         match utils::rest_api_call_get(&api_call) {
-            Ok(_response_body) => response_body = _response_body,
+            Ok(_response_body) => {
+                status.success(term);
+                response_body = _response_body
+            }
             Err(err)           => {
+                status.error(term);
                 is_api_call_success = false;
                 writeln_red!(term, "There was an error getting the public encryption key for {}: {}", repo_tag, err);
             }
@@ -344,8 +499,9 @@ pub fn encrypt_vars(board_info: &mut trello::TrelloBoardInfo, config: &config::T
 }
 
 #[allow(unused_assignments)]
-pub fn generate_file(ci_config_output_dir: &mut PathBuf, encrypted_vars: &TravisEncryptedVars, repo_tag: &String) -> Result<(), &'static str> {
+pub fn generate_file(term: &mut Box<term::StdoutTerminal>, ci_config_output_dir: &mut PathBuf, encrypted_vars: &TravisEncryptedVars, repo_tag: &String) -> Result<(), &'static str> {
 
+    let status = utils::StatusPrint::from_str(term, "Generating .travis.yml");
     let mut travis_file: File;
     ci_config_output_dir.push(".travis.yml");
     match File::create(ci_config_output_dir.as_path()) {
@@ -353,6 +509,7 @@ pub fn generate_file(ci_config_output_dir: &mut PathBuf, encrypted_vars: &Travis
             travis_file = _travis_file;
         }
         Err(_)    => {
+            status.error(term);
             return Err("Failed to create .travis.yml");
         }
     }
@@ -418,144 +575,48 @@ after_failure:
 
     match travis_file.write_all(&file_data.into_bytes()[..]) {
         Ok(()) => (),
-        Err(_) => return Err("Error while writing to the file.")
+        Err(_) => {
+            status.error(term);
+            return Err("Error while writing to the file.");
+        }
     }
 
     match travis_file.flush() {
         Ok(()) => (),
-        Err(_) => return Err("Error while flushing the file writing buffer.")
+        Err(_) => {
+            status.error(term);
+            return Err("Error while flushing the file writing buffer.")
+        }
     }
 
+    status.success(term);
     Ok(())
 }
 
-//TODO: Different error behavior?
-pub fn setup_ci_config(term:             &mut Box<term::StdoutTerminal>,
-                       config:           &mut config::TrelloBSTAPIConfig,
-                       config_file_path: &mut PathBuf,
-                       output_direcrory: &mut PathBuf) -> (){
+pub fn acquire_hooks(term: &mut Box<term::StdoutTerminal>, config: &config::TrelloBSTAPIConfig) -> Result<ParsedHooksResponse, &'static str> {
 
-    output_direcrory.push(".travis.yml");
+    let mut api_call      = format!("https://api.travis-ci.org/hooks");
+    let mut auth          = format!("token {}", config.travis_access_token);
+    let mut response_body = String::new();
+    let mut header        = Headers::new();
 
-    //Get access token / API key
-    match setup_api(term, config_file_path, config){
-        Ok(_)    => (),
-        Err(err) => {
-            writeln_red!(term, "Error setting up the travis-CI API token: {}", err);
-            writeln_red!(term, "Configuration file won't be used...");
-            return ()
-        }
+    header.set_raw("User-Agent",    vec![b"Travis_TrelloBST/1.0.0".to_vec()]);
+    header.set_raw("Accept",        vec![b"application/vnd.travis-ci.2+json".to_vec()]);
+    header.set_raw("Authorization", vec![auth.into_bytes()]);
+    header.set_raw("Host",          vec![b"api.travis-ci.org".to_vec()]);
+    header.set_raw("Content-Type",  vec![b"application/json".to_vec()]);
+
+    match utils::rest_api_call_get_with_header(&api_call, header) {
+        Ok(_response_body) => response_body = _response_body,
+        Err(err)           => return Err(err)
     }
 
-    if *config_file_path != PathBuf::new() {
-        match config::TrelloBSTAPIConfig::save_config(&config_file_path, &config) {
-            Ok(_)    => (),
-            Err(err) => {
-                writeln_red!(term, "Error: {}", err);
-                writeln_red!(term, "Configuration file won't be used...");
-                *config_file_path = PathBuf::new();
-            }
-        }
-    }
-
-    //Get repo tag & public key
-    loop{
-
-        //Get repo tag
-        let mut repo_tag: String = String::new();
-        get_input_string!(term, &mut repo_tag, "Please enter the repo you wish to get the .travis.yml for in the form of user/repo: ");
-
-
+    match ParsedHooksResponse::from_json(&response_body) {
+        Ok(hooks) => Ok(hooks),
+        Err(err)  => return Err(err)
     }
 }
 
-pub fn setup_api(term: &mut Box<term::StdoutTerminal>, config_file_path: &mut PathBuf, config: &mut config::TrelloBSTAPIConfig) -> Result<(), &'static str> {
-
-    if config.travis_access_token.is_empty() {
-
-        //Get github token
-        let mut github_token = String::new();
-        if *config_file_path != PathBuf::new() {
-            get_input_string!(term, &mut github_token, "Travis-CI currently uses a GitHub access token to authenticate and generate an API key,
-    please log into GitHub and go to https://github.com/settings/tokens and generate a new
-    token and input it here. (Note that once the Travis-CI API key is acquired, the GitHub
-    access token can be deleted.): ");
-        } else {
-            get_input_string!(term, &mut github_token, "Travis-CI currently uses a GitHub access token to authenticate and generate an API key,
-    please log into GitHub and go to https://github.com/settings/tokens and generate a new
-    token and input it here: ");
-        }
-
-        //NOTE: Removes spaces from the github token, (copying a token from the github page adds a space in front...)
-        github_token = github_token.trim_matches(' ').to_string();
-
-        //Convert github token to travis api key
-        let mut api_call                = format!("https://api.travis-ci.org/auth/github?github_token={}", github_token);
-        let mut response_body           = String::new();
-        let mut header                  = Headers::new();
-        let mut content_length: Vec<u8> = Vec::new();
-
-        content_length.push(20 + github_token.len() as u8);
-        header.set_raw("User-Agent",     vec![b"Travis_TrelloBST/1.0.0".to_vec()]);
-        header.set_raw("Accept",         vec![b"application/vnd.travis-ci.2+json".to_vec()]);
-        header.set_raw("Host",           vec![b"api.travis-ci.org".to_vec()]);
-        header.set_raw("Content-Type",   vec![b"application/json".to_vec()]);
-        header.set_raw("Content-Length", vec![content_length]);
-
-        match utils::rest_api_call_post_with_header(&api_call, header) {
-            Ok(_response_body) => response_body = _response_body,
-            Err(err)           => {
-                *config_file_path = PathBuf::new();
-                return Err(err)
-            }
-        }
-
-        match utils::get_single_json_value_as_string(&response_body, "access_token") {
-            Ok(value) => config.travis_access_token = value,
-            Err(err)  => return Err(err)
-        }
-
-
-
-
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        let mut api_call2      = format!("https://api.travis-ci.org/hooks");
-        let mut auth           = format!("token {}", config.travis_access_token);
-        let mut response_body2 = String::new();
-        let mut header2        = Headers::new();
-
-        header2.set_raw("User-Agent",    vec![b"Travis_TrelloBST/1.0.0".to_vec()]);
-        header2.set_raw("Accept",        vec![b"application/vnd.travis-ci.2+json".to_vec()]);
-        header2.set_raw("Authorization", vec![auth.into_bytes()]);
-        header2.set_raw("Host",          vec![b"api.travis-ci.org".to_vec()]);
-        header2.set_raw("Content-Type",  vec![b"application/json".to_vec()]);
-
-        match utils::rest_api_call_get_with_header(&api_call2, header2) {
-            Ok(_response_body) => response_body2 = _response_body,
-            Err(err)           => {
-                *config_file_path = PathBuf::new();
-                return Err(err)
-            }
-        }
-
-        println!("--------------- {}", response_body2);
-
-        let mut hooks: ParsedHooksResponse;
-        match ParsedHooksResponse::from_json(&response_body2) {
-            Ok(_hooks) => {
-                hooks = _hooks;
-            }
-            Err(err) => {
-                writeln_red!(term, "////////////////////// {}", err);
-            }
-        }
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-    }
-
-    Ok(())
-}
 
 
 

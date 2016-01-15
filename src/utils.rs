@@ -195,7 +195,6 @@ pub fn rest_api_call_get_with_header(api_call: &String, header: Headers) -> Resu
                      .send() {
         Ok(res) => response = res,
         Err(err)  => {
-           println!("----------------------- {:?}", err);
             return Err("Error calling the API.");
         }
     }
@@ -266,6 +265,42 @@ pub fn rest_api_call_post_with_header(api_call: &String, header: Headers) -> Res
     match http_client.post(api_call_url)
             .headers(header)
             .send() {
+        Ok(res) => response = res,
+        Err(_)  => return Err("Error calling the API.")
+    }
+
+    match response.read_to_string(&mut response_body){
+        Ok(_)  => (),
+        Err(_) => return Err("Error converting the API response to a string.")
+    }
+
+    if response_body == "invalid key" {
+        return Err("Error, the API key is invalid.");
+    }
+
+    if response_body == "invalid token" {
+        return Err("The app token is invalid.");
+    }
+
+    Ok(response_body)
+}
+
+#[allow(dead_code)]
+pub fn rest_api_call_put_with_header(api_call: &String, header: Headers) -> Result<String, &'static str> {
+
+    let     http_client   = Client::new();
+    let mut response:       Response;
+    let mut response_body = String::new();
+    let     api_call_url:   Url;
+
+    match api_call.into_url() {
+        Ok(url) => api_call_url = url,
+        Err(_)  => return Err("Error while parsing API call url.")
+    }
+
+    match http_client.put(api_call_url)
+                     .headers(header)
+                     .send() {
         Ok(res) => response = res,
         Err(_)  => return Err("Error calling the API.")
     }
