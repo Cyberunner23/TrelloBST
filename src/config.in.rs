@@ -42,13 +42,18 @@ include!("utils_macros.rs");
 
 
 ////////////////////////////////////////////////////////////
+//                        Constants                       //
+////////////////////////////////////////////////////////////
+pub static trello_api_key: &'static str = "0e190833c4db5fd7d3b0b26ae642d6fa";
+
+
+////////////////////////////////////////////////////////////
 //                        Structs                         //
 ////////////////////////////////////////////////////////////
 
 
 #[derive(Serialize, Deserialize)]
 pub struct TrelloBSTAPIConfig {
-    pub trello_api_key:      String,
     pub trello_app_token:    String,
     pub travis_access_token: String,
     pub appveyor_api_token:  String,
@@ -63,10 +68,9 @@ impl TrelloBSTAPIConfig {
 
     pub fn new() -> TrelloBSTAPIConfig {
         TrelloBSTAPIConfig {
-            trello_api_key:      "".to_string(),
-            trello_app_token:    "".to_string(),
-            travis_access_token: "".to_string(),
-            appveyor_api_token:  "".to_string(),
+            trello_app_token:    String::new(),
+            travis_access_token: String::new(),
+            appveyor_api_token:  String::new(),
         }
     }
 

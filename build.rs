@@ -27,12 +27,12 @@
 macro_rules! expand {
     ($file_in:expr, $file_out:expr) => {{
 
-        let out_dir = env::var_os("OUT_DIR").unwrap();
+        let     src      = Path::new($file_in);
+        let     out_dir  = env::var_os("OUT_DIR").unwrap();
+        let     dest     = Path::new(&out_dir).join($file_out);
         let mut registry = syntex::Registry::new();
-        serde_codegen::register(&mut registry);
 
-        let src  = Path::new($file_in);
-        let dest = Path::new(&out_dir).join($file_out);
+        serde_codegen::register(&mut registry);
         registry.expand("", &src, &dest).unwrap();
     }}
 }
@@ -47,9 +47,9 @@ mod inner {
     use std::path::Path;
 
     pub fn main() {
-        expand!("src/config.rs.in",    "config.rs");
-        expand!("src/trello.rs.in",    "trello.rs");
-        expand!("src/travis_ci.rs.in", "travis_ci.rs");
+        expand!("src/config.in.rs",    "config.rs");
+        expand!("src/trello.in.rs",    "trello.rs");
+        expand!("src/travis_ci.in.rs", "travis_ci.rs");
     }
 }
 

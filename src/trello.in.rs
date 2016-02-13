@@ -27,6 +27,7 @@
 
 use std::error::Error;
 use std::io;
+use std::process::exit;
 
 use config;
 
@@ -105,10 +106,10 @@ pub struct BoardsLabelsResponse {
 impl TrelloBoardInfo {
     pub fn new() -> TrelloBoardInfo {
         TrelloBoardInfo {
-            board_id:      "".to_string(),
-            list_id:       "".to_string(),
-            build_pass_id: "".to_string(),
-            build_fail_id: "".to_string(),
+            board_id:      String::new(),
+            list_id:       String::new(),
+            build_pass_id: String::new(),
+            build_fail_id: String::new(),
         }
     }
 }
@@ -117,7 +118,7 @@ impl TrelloBoardInfo {
 impl MembersMeBoardsResponse{
     pub fn new() -> MembersMeBoardsResponse{
         MembersMeBoardsResponse{
-            id:     "".to_string(),
+            id:     String::new(),
             boards: Vec::new(),
         }
     }
@@ -127,9 +128,9 @@ impl MembersMeBoardsResponse{
 impl BoardsResponse {
     pub fn new() -> BoardsResponse{
         BoardsResponse {
-            id:    "".to_string(),
-            name:  "".to_string(),
-            desc:  "".to_string(),
+            id:    String::new(),
+            name:  String::new(),
+            desc:  String::new(),
             lists: Vec::new(),
         }
     }
@@ -139,7 +140,7 @@ impl BoardsResponse {
 impl BoardsLabelsResponse {
     pub fn new() -> BoardsLabelsResponse {
         BoardsLabelsResponse{
-            id:     "".to_string(),
+            id:     String::new(),
             labels: Vec::new(),
         }
     }
@@ -180,7 +181,7 @@ pub fn setup_board(term: &mut Box<term::StdoutTerminal>, config: &mut config::Tr
 #[allow(unused_assignments)]
 pub fn acquire_board_list(config: &config::TrelloBSTAPIConfig, board_list: &mut MembersMeBoardsResponse) -> Result<(), &'static str>{
 
-    let     api_call      = format!("https://api.trello.com/1/members/me?fields=&boards=open&board_fields=name&key={}&token={}", config.trello_api_key, config.trello_app_token);
+    let     api_call      = format!("https://api.trello.com/1/members/me?fields=&boards=open&board_fields=name&key={}&token={}", config::trello_api_key, config.trello_app_token);
     let mut response_body = String::new();
 
     match utils::rest_api_call_get(&api_call) {
@@ -209,13 +210,14 @@ pub fn board_selection(term: &mut Box<term::StdoutTerminal>, config: &mut config
         counter += 1;
     }
     writeln_green!(term, "[{}] Create a new board.", counter);
+    writeln_red!(term, "[0] Quit.");
 
     let mut option: usize = 0;
     loop {
 
         get_input_usize!(term, &mut option, "Please enter an option: ");
 
-        if option <= counter && option > 0 {
+        if option <= counter && option >= 0 {
             break;
         }else {
             writeln_red!(term, "Please enter a valid option.");
@@ -230,6 +232,8 @@ pub fn board_selection(term: &mut Box<term::StdoutTerminal>, config: &mut config
                 panic!(format!("An error occured: {}", err));
             }
         }
+    } else if option == 0 {
+        exit(0)
     } else {
         board_info.board_id = board_list.boards[option - 1].id.clone();
     }
@@ -249,7 +253,7 @@ pub fn create_board(term: &mut Box<term::StdoutTerminal>, config: &config::Trell
     }
 
     let     status = utils::StatusPrint::from_str(term, "Creating the board.");
-    let     api_call      = format!("https://trello.com/1/boards?name={}&defaultLists=false&key={}&token={}", board_name, config.trello_api_key, config.trello_app_token);
+    let     api_call      = format!("https://trello.com/1/boards?name={}&defaultLists=false&key={}&token={}", board_name, config::trello_api_key, config.trello_app_token);
     let mut response_body = String::new();
 
     match utils::rest_api_call_post(&api_call) {
@@ -307,7 +311,7 @@ pub fn setup_list(term: &mut Box<term::StdoutTerminal>, config: &mut config::Tre
 #[allow(unused_assignments)]
 pub fn acquire_board_lists_list(config: &config::TrelloBSTAPIConfig, board_info: &TrelloBoardInfo, board_lists_list: &mut BoardsResponse) -> Result<(), &'static str>{
 
-    let api_call      = format!("https://api.trello.com/1/boards/{}?lists=open&list_fields=name&fields=name,desc&key={}&token={}",board_info.board_id, config.trello_api_key, config.trello_app_token);
+    let api_call      = format!("https://api.trello.com/1/boards/{}?lists=open&list_fields=name&fields=name,desc&key={}&token={}",board_info.board_id, config::trello_api_key, config.trello_app_token);
     let mut response_body = String::new();
 
     match utils::rest_api_call_get(&api_call) {
@@ -340,6 +344,7 @@ pub fn board_list_selection(term: &mut Box<term::StdoutTerminal>, config: &mut c
         counter += 1;
     }
     writeln_green!(term, "[{}] Create a new list.", counter);
+    writeln_red!(term,   "[0] Quit.");
 
 
     let mut option: usize = 0;
@@ -347,7 +352,7 @@ pub fn board_list_selection(term: &mut Box<term::StdoutTerminal>, config: &mut c
 
         get_input_usize!(term, &mut option, "Please enter an option: ");
 
-        if option <= counter && option > 0 {
+        if option <= counter && option >= 0 {
             break;
         }else {
             writeln_red!(term, "Please enter a valid option.");
@@ -361,6 +366,8 @@ pub fn board_list_selection(term: &mut Box<term::StdoutTerminal>, config: &mut c
                 panic!(format!("An error occured: {}", err));
             }
         }
+    } else if option == 0 {
+        exit(0)
     } else {
         board_info.list_id = board_lists_list.lists[option - 1].id.clone();
     }
@@ -377,7 +384,7 @@ pub fn create_list(term: &mut Box<term::StdoutTerminal>, config: &config::Trello
     }
 
     let status            = utils::StatusPrint::from_str(term, "Creating the list.");
-    let api_call          = format!("https://trello.com/1/lists?name={}&idBoard={}&defaultLists=false&key={}&token={}", list_name, board_info.board_id, config.trello_api_key, config.trello_app_token);
+    let api_call          = format!("https://trello.com/1/lists?name={}&idBoard={}&defaultLists=false&key={}&token={}", list_name, board_info.board_id, config::trello_api_key, config.trello_app_token);
     let mut response_body = String::new();
 
     match utils::rest_api_call_post(&api_call) {
@@ -446,7 +453,7 @@ pub fn setup_labels(term: &mut Box<term::StdoutTerminal>, config: &mut config::T
 //TODO?: Create a manual parser.
 pub fn acquire_board_label_list(config: &config::TrelloBSTAPIConfig, board_info: &TrelloBoardInfo, board_label_list: &mut BoardsLabelsResponse) -> Result<(), &'static str> {
 
-    let     api_call       = format!("https://api.trello.com/1/boards/{}?labels=all&label_fields=name,color&fields=none&key={}&token={}",board_info.board_id, config.trello_api_key, config.trello_app_token);
+    let     api_call       = format!("https://api.trello.com/1/boards/{}?labels=all&label_fields=name,color&fields=none&key={}&token={}",board_info.board_id, config::trello_api_key, config.trello_app_token);
     let mut response_body = String::new();
 
     match utils::rest_api_call_get(&api_call) {
@@ -477,13 +484,14 @@ pub fn board_label_selection_pass(term: &mut Box<term::StdoutTerminal>, config: 
         counter += 1;
     }
     writeln_green!(term, "[{}] Create a new label.", counter);
+    writeln_red!(term, "[0] Quit.");
 
     let mut option: usize = 0;
     loop {
 
         get_input_usize!(term, &mut option, "Please enter an option: ");
 
-        if option <= counter && option > 0 {
+        if option <= counter && option >= 0 {
             break;
         }else {
             writeln_red!(term, "Please enter a valid option.");
@@ -497,7 +505,9 @@ pub fn board_label_selection_pass(term: &mut Box<term::StdoutTerminal>, config: 
                 panic!(format!("An error occured: {}", err));
             }
         }
-    } else {
+    } else if option == 0 {
+        exit(0)
+    } else{
         board_info.build_pass_id = board_label_list.labels[option - 1].id.clone();//
     }
 
@@ -514,13 +524,14 @@ pub fn board_label_selection_fail(term: &mut Box<term::StdoutTerminal>, config: 
         counter += 1;
     }
     writeln_green!(term, "[{}] Create a new label.", counter);
+    writeln_red!(term, "[0] Quit.");
 
     let mut option: usize = 0;
     loop {
 
         get_input_usize!(term, &mut option, "Please enter an option: ");
 
-        if option <= counter && option > 0 {
+        if option <= counter && option >= 0 {
             break;
         }else {
             writeln_red!(term, "Please enter a valid option.");
@@ -529,12 +540,14 @@ pub fn board_label_selection_fail(term: &mut Box<term::StdoutTerminal>, config: 
 
     if option == counter {
         match create_label_fail(term, &config, board_info){//
-            Ok(_)    => (),//
+            Ok(_)    => (),
             Err(err) => {
                 panic!(format!("An error occured: {}", err));
             }
         }
-    } else {
+    } else if option == 0 {
+        exit(0)
+    } else{
         board_info.build_fail_id = board_label_list.labels[option - 1].id.clone();//
     }
 
@@ -565,7 +578,7 @@ pub fn create_label_pass(term: &mut Box<term::StdoutTerminal>, config: &config::
     //if label_color == "none" {label_color = "".to_string()}
 
     let status            = utils::StatusPrint::from_str(term, "Creating the label.");
-    let api_call          = format!("https://trello.com/1/board/{}/labels?name={}&color={}&key={}&token={}", board_info.board_id, label_name, label_color, config.trello_api_key, config.trello_app_token);
+    let api_call          = format!("https://trello.com/1/board/{}/labels?name={}&color={}&key={}&token={}", board_info.board_id, label_name, label_color, config::trello_api_key, config.trello_app_token);
     let mut response_body = String::new();
 
     match utils::rest_api_call_post(&api_call) {
@@ -613,7 +626,7 @@ pub fn create_label_fail(term: &mut Box<term::StdoutTerminal>, config: &config::
     //if label_color == "none" {label_color = "\"\"".to_string()}
 
     let status            = utils::StatusPrint::from_str(term, "Creating the label.");
-    let api_call          = format!("https://trello.com/1/board/{}/labels?name={}&color={}&key={}&token={}", board_info.board_id, label_name, label_color, config.trello_api_key, config.trello_app_token);
+    let api_call          = format!("https://trello.com/1/board/{}/labels?name={}&color={}&key={}&token={}", board_info.board_id, label_name, label_color, config::trello_api_key, config.trello_app_token);
     let mut response_body = String::new();
 
     match utils::rest_api_call_post(&api_call) {

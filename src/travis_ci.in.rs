@@ -68,7 +68,6 @@ include!("utils_macros.rs");
 ////////////////////////////////////////////////////////////
 
 pub struct TravisEncryptedVars {
-    pub trello_api_key:   String,
     pub trello_app_token: String,
     pub list_id:          String,
     pub build_pass_id:    String,
@@ -482,7 +481,6 @@ pub fn get_repo_tag_and_pub_key(term: &mut Box<term::StdoutTerminal>, config: &c
 pub fn encrypt_vars(board_info: &mut trello::TrelloBoardInfo, config: &config::TrelloBSTAPIConfig, crypto_state: &mut PKey) -> TravisEncryptedVars{
 
     //Create environment variables
-    let trello_api_key_env_var   = format!("TRELLO_API_KEY={}",           config.trello_api_key);
     let trello_app_token_env_var = format!("TRELLO_API_TOKEN={}",         config.trello_app_token);
     let list_id_env_var          = format!("TRELLO_API_LIST_ID={}",       board_info.list_id);
     let build_pass_id_env_var    = format!("TRELLO_API_BUILD_PASS_ID={}", board_info.build_pass_id);
@@ -490,7 +488,6 @@ pub fn encrypt_vars(board_info: &mut trello::TrelloBoardInfo, config: &config::T
 
     //Encrypt environment variables
     TravisEncryptedVars {
-        trello_api_key:   crypto_state.public_encrypt_with_padding(&trello_api_key_env_var.into_bytes(),   EncryptionPadding::PKCS1v15).to_base64(base64::STANDARD),
         trello_app_token: crypto_state.public_encrypt_with_padding(&trello_app_token_env_var.into_bytes(), EncryptionPadding::PKCS1v15).to_base64(base64::STANDARD),
         list_id:          crypto_state.public_encrypt_with_padding(&list_id_env_var.into_bytes(),          EncryptionPadding::PKCS1v15).to_base64(base64::STANDARD),
         build_pass_id:    crypto_state.public_encrypt_with_padding(&build_pass_id_env_var.into_bytes(),    EncryptionPadding::PKCS1v15).to_base64(base64::STANDARD),
@@ -527,7 +524,6 @@ script:
 env:
   global:
     - BUILD_DIRECTORY=./
-    - secure: \"{0}\"
     - secure: \"{1}\"
     - secure: \"{2}\"
     - secure: \"{3}\"
@@ -546,7 +542,7 @@ after_success:
       && card_name=\"name=\"${{message}}
       && additional_data=\"&due=null&pos=top\"
       && description=\"&desc=\\[Build\\]:%20\"${{buildLink}}\"%0D\\[Logs\\]:%20https://travis-ci.org/{5}/jobs/\"${{TRAVIS_JOB_ID}}
-      && trello_data=\"&idList=\"${{TRELLO_API_LIST_ID}}\"&idLabels=\"${{TRELLO_API_BUILD_PASS_ID}}\"&token=\"${{TRELLO_API_TOKEN}}\"&key=\"${{TRELLO_API_KEY}}
+      && trello_data=\"&idList=\"${{TRELLO_API_LIST_ID}}\"&idLabels=\"${{TRELLO_API_BUILD_PASS_ID}}\"&token=\"${{TRELLO_API_TOKEN}}\"&key={0}
       && data=${{card_name}}${{additional_data}}${{description}}${{trello_data}}
       && curl -s -o /dev/null -w \"%{{http_code}}\\n\" --data ${{data}} https://api.trello.com/1/cards;
     fi
@@ -562,11 +558,11 @@ after_failure:
       && card_name=\"name=\"${{message}}
       && additional_data=\"&due=null&pos=top\"
       && description=\"&desc=\\[Logs\\]:%20https://travis-ci.org/{5}/jobs/\"${{TRAVIS_JOB_ID}}\"
-      && trello_data=\"&idList=\"${{TRELLO_API_LIST_ID}}\"&idLabels=\"${{TRELLO_API_BUILD_FAIL_ID}}\"&token=\"${{TRELLO_API_TOKEN}}\"&key=\"${{TRELLO_API_KEY}}
+      && trello_data=\"&idList=\"${{TRELLO_API_LIST_ID}}\"&idLabels=\"${{TRELLO_API_BUILD_FAIL_ID}}\"&token=\"${{TRELLO_API_TOKEN}}\"&key={0}
       && data=${{card_name}}${{additional_data}}${{description}}${{trello_data}}
       && curl -s -o /dev/null -w \"%{{http_code}}\\n\" --data ${{data}} https://api.trello.com/1/cards;
     fi
-", encrypted_vars.trello_api_key,
+", config::trello_api_key,
    encrypted_vars.trello_app_token,
    encrypted_vars.list_id,
    encrypted_vars.build_pass_id,
