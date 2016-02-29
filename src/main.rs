@@ -261,11 +261,27 @@ fn main() {
                 }
             },
             2 => {
-                //TODO: Set Appveyor config values and save config.
-                //let mut appveyor_yml_path = ci_config_output_dir;
-                //appveyor_yml_path.push("appveyor.yml");
-                //TODO: Setup AppVeyor API Key
-                //TODO: Create appveyor.yml
+
+                //Get access token / API key
+                appveyor::setup_api(&mut term, &mut config_file_path, &mut config);
+
+                //Save access token.
+                if config_file_path != PathBuf::new() {
+                    match config::TrelloBSTAPIConfig::save_config(&config_file_path, &config) {
+                        Ok(_)    => (),
+                        Err(err) => {
+                            writeln_red!(term, "Error: {}", err);
+                            writeln_red!(term, "Configuration file won't be used...");
+                            config_file_path = PathBuf::new();
+                        }
+                    }
+                }
+
+                //Create appveyor.yml
+                match appveyor::create_appveyor_yml(&mut term, &config, &mut board_info, &mut output_direcrory) {
+                    Ok(()) => (),
+                    Err(err) => {writeln_red!(term, "Error {}", err);}
+                }
             },
             0 => exit(0),
             _ => {panic!("An invalid option slipped through...");}

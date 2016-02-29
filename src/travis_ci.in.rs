@@ -340,7 +340,6 @@ pub fn create_travis_yml(term: &mut Box<term::StdoutTerminal>, config: &config::
     get_repo_tag_and_pub_key(term, config, &mut crypto_state, &mut repo_tag);
 
     //Encrypt Variables
-    //Encrypt Variables
     let status         = utils::StatusPrint::from_str(term, "Encrypting Trello API values.");
     let encrypted_vars = encrypt_vars(board_info, &config, &mut crypto_state);
     status.success(term);
