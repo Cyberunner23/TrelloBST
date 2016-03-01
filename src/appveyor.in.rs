@@ -529,7 +529,7 @@ on_failure:
       $ci_name         = \"[AppVeyor]\"
       $os_name         = \"[Windows]\"
       $compiler        = \"[$($env:COMPILER)]:%20\"
-      $pass            = \"#$($env:APPVEYOR_BUILD_NUMBER)%20PASSED\"
+      $pass            = \"#$($env:APPVEYOR_BUILD_NUMBER)%20FAILED\"
       $card_name       = \"name=$($appveyor_branch)$($ci_name)$($os_name)$(compiler)$(pass)\"
       $additional_data = \"&due=null&pos=top\"
       $description     = \"&desc=\\[Logs\\]:%20https://ci.appveyor.com/project/$($env:APPVEYOR_REPO_NAME)/build/$($env:APPVEYOR_BUILD_VERSION)/job/$($env:APPVEYOR_JOB_ID)
