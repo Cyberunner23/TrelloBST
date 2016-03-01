@@ -1,4 +1,3 @@
-
 os: Visual Studio 2015
 
 environment:
@@ -28,33 +27,33 @@ build_script:
 
 on_success:
   - ps: |
-    Remove-item alias:curl
-    cd ./target
-    7z a -r build.zip ./
-    $buildLink       = [string](curl --silent --upload-file .\build.zip https://transfer.sh/build.zip)
-    $appveyor_branch = "[$($env:APPVEYOR_REPO_BRANCH)]"
-    $ci_name         = "[AppVeyor]"
-    $os_name         = "[Windows]"
-    $compiler        = "[rustc $($env:channel)]:%20"
-    $pass            = "#$($env:APPVEYOR_BUILD_NUMBER)%20PASSED"
-    $card_name       = "name=$($appveyor_branch)$($ci_name)$($os_name)$(compiler)$(pass)"
-    $additional_data = "&due=null&pos=top"
-    $description     = "&desc=\[Build\]:%20$($buildLink)%0D\[Logs\]:%20https://ci.appveyor.com/project/$($env:APPVEYOR_REPO_NAME)/build/$($env:APPVEYOR_BUILD_VERSION)/job/$($env:APPVEYOR_JOB_ID)
-    $trello_data     = "&idList=$($env:TRELLO_API_LIST_ID)&idLabels=$($env:TRELLO_API_BUILD_PASS_ID)&token=$($env:TRELLO_APP_TOKEN)&key=$($env:TRELLO_API_KEY)"
-    $data            = "$($env:card_name)$($env:additional_data)$($env:description)$($env:trello_data)"
-    curl -s --data $($data) https://api.trello.com/1/cards > $null
+      Remove-item alias:curl
+      cd .\target
+      7z a -r build.zip ./
+      $buildLink       = [string](curl --silent --upload-file .\build.zip https://transfer.sh/build.zip)
+      $appveyor_branch = "[$($env:APPVEYOR_REPO_BRANCH)]"
+      $ci_name         = "[AppVeyor]"
+      $os_name         = "[Windows]"
+      $compiler        = "[rustc $($env:channel)]:%20"
+      $pass            = "#$($env:APPVEYOR_BUILD_NUMBER)%20PASSED"
+      $card_name       = "name=$($appveyor_branch)$($ci_name)$($os_name)$(compiler)$(pass)"
+      $additional_data = "&due=null&pos=top"
+      $description     = "&desc=\[Build\]:%20$($buildLink)%0D\[Logs\]:%20https://ci.appveyor.com/project/$($env:APPVEYOR_REPO_NAME)/build/$($env:APPVEYOR_BUILD_VERSION)/job/$($env:APPVEYOR_JOB_ID)
+      $trello_data     = "&idList=$($env:TRELLO_API_LIST_ID)&idLabels=$($env:TRELLO_API_BUILD_PASS_ID)&token=$($env:TRELLO_APP_TOKEN)&key=$($env:TRELLO_API_KEY)"
+      $data            = "$($env:card_name)$($env:additional_data)$($env:description)$($env:trello_data)"
+      curl -s --data $($data) https://api.trello.com/1/cards > $null
 
-  on_failure:
-    - ps: |
-    Remove-item alias:curl
-    $appveyor_branch = "[$($env:APPVEYOR_REPO_BRANCH)]"
-    $ci_name         = "[AppVeyor]"
-    $os_name         = "[Windows]"
-    $compiler        = "[$($env:COMPILER)]:%20"
-    $pass            = "#$($env:APPVEYOR_BUILD_NUMBER)%20PASSED"
-    $card_name       = "name=$($appveyor_branch)$($ci_name)$($os_name)$(compiler)$(pass)"
-    $additional_data = "&due=null&pos=top"
-    $description     = "&desc=\[Logs\]:%20https://ci.appveyor.com/project/$($env:APPVEYOR_REPO_NAME)/build/$($env:APPVEYOR_BUILD_VERSION)/job/$($env:APPVEYOR_JOB_ID)
-    $trello_data     = "&idList=$($env:TRELLO_API_LIST_ID)&idLabels=$($env:TRELLO_API_BUILD_PASS_ID)&token=$($env:TRELLO_APP_TOKEN)&key=$($env:TRELLO_API_KEY)"
-    $data            = "$($env:card_name)$($env:additional_data)$($env:description)$($env:trello_data)"
-    curl -s --data $($data) https://api.trello.com/1/cards > $null
+on_failure:
+  - ps: |
+      Remove-item alias:curl
+      $appveyor_branch = "[$($env:APPVEYOR_REPO_BRANCH)]"
+      $ci_name         = "[AppVeyor]"
+      $os_name         = "[Windows]"
+      $compiler        = "[$($env:COMPILER)]:%20"
+      $pass            = "#$($env:APPVEYOR_BUILD_NUMBER)%20PASSED"
+      $card_name       = "name=$($appveyor_branch)$($ci_name)$($os_name)$(compiler)$(pass)"
+      $additional_data = "&due=null&pos=top"
+      $description     = "&desc=\[Logs\]:%20https://ci.appveyor.com/project/$($env:APPVEYOR_REPO_NAME)/build/$($env:APPVEYOR_BUILD_VERSION)/job/$($env:APPVEYOR_JOB_ID)
+      $trello_data     = "&idList=$($env:TRELLO_API_LIST_ID)&idLabels=$($env:TRELLO_API_BUILD_PASS_ID)&token=$($env:TRELLO_APP_TOKEN)&key=$($env:TRELLO_API_KEY)"
+      $data            = "$($env:card_name)$($env:additional_data)$($env:description)$($env:trello_data)"
+      curl -s --data $($data) https://api.trello.com/1/cards > $null
