@@ -533,7 +533,7 @@ on_failure:
       $card_name       = \"name=$($appveyor_branch)$($ci_name)$($os_name)$($compiler)$($pass)\"
       $additional_data = \"&due=null&pos=top\"
       $description     = \"&desc=\\[Logs\\]:%20https://ci.appveyor.com/project/$($env:APPVEYOR_REPO_NAME)/build/$($env:APPVEYOR_BUILD_VERSION)/job/$($env:APPVEYOR_JOB_ID)\"
-      $trello_data     = \"&idList=$($env:TRELLO_API_LIST_ID)&idLabels=$($env:TRELLO_API_BUILD_PASS_ID)&token=$($env:TRELLO_APP_TOKEN)&key=$($env:TRELLO_API_KEY)\"
+      $trello_data     = \"&idList=$($env:TRELLO_API_LIST_ID)&idLabels=$($env:TRELLO_API_BUILD_FAIL_ID)&token=$($env:TRELLO_APP_TOKEN)&key=$($env:TRELLO_API_KEY)\"
       $data            = \"$($env:card_name)$($env:additional_data)$($env:description)$($env:trello_data)\"
       curl -s --data $($data) https://api.trello.com/1/cards > $null
 ", config::trello_api_key,
