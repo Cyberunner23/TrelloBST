@@ -29,7 +29,7 @@ build_script:
 on_success:
   - ps: |
     Remove-item alias:curl
-    cd $($env:BUILD_DIRECTORY)
+    cd $env:BUILD_DIRECTORY
     7z a -r build.zip ./
     $buildLink       = [string](curl --silent --upload-file .\build.zip https://transfer.sh/build.zip)
     $appveyor_branch = "[$($env:APPVEYOR_REPO_BRANCH)]"
