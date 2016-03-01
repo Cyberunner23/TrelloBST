@@ -1,8 +1,6 @@
 os: Visual Studio 2015
 
 environment:
-  BUILD_DIRECTORY: ./target
-  COMPILER: MSVC
   TRELLO_API_KEY: 0e190833c4db5fd7d3b0b26ae642d6fa
   TRELLO_APP_TOKEN:
     secure: 2BDZzUNMc1ganOBx/wtVo6OacN3hdo972bsRl6RwHaGHD50QtxkLOosT/bjNl3S1gSpPg0AQjCZxHSnMr3vJRQNh9p1z2BkWQO31CrWZrWk=
@@ -12,44 +10,14 @@ environment:
     secure: 8tnvk1xusIDSQ1l+pjLs0mgC8OVbIvkDCM9G4kdj8Go=
   TRELLO_API_BUILD_FAIL_ID:
     secure: oNcqUlgc1aEjPA9npRLtr0aUJK0yyzjWIzqdxaQeF+A=
-  matrix:
-    # Stable 64-bit MSVC
-    - channel: stable
-      target: x86_64-pc-windows-msvc
-    # Beta 64-bit MSVC
-    - channel: beta
-      target: x86_64-pc-windows-msvc
 
-install:
-  - ps: .\appveyor_rust_install.ps1
 build_script:
-  - cmd: cargo build
-
-on_success:
-  - ps: |
-      Remove-item alias:curl
-      cd $($env:BUILD_DIRECTORY)
-      7z a -r build.zip ./
-      $buildLink       = [string](curl --silent --upload-file .\build.zip https://transfer.sh/build.zip)
-      $appveyor_branch = "[$($env:APPVEYOR_REPO_BRANCH)]"
-      $ci_name         = "[AppVeyor]"
-      $os_name         = "[Windows]"
-      $compiler        = "[rustc $($env:channel)]:%20"
-      $pass            = "#$($env:APPVEYOR_BUILD_NUMBER)%20PASSED"
-      $card_name       = "name=$($appveyor_branch)$($ci_name)$($os_name)$(compiler)$(pass)"
-      $additional_data = "&due=null&pos=top"
-      $description     = "&desc=\[Build\]:%20$($buildLink)%0D\[Logs\]:%20https://ci.appveyor.com/project/$($env:APPVEYOR_REPO_NAME)/build/$($env:APPVEYOR_BUILD_VERSION)/job/$($env:APPVEYOR_JOB_ID)
-      $trello_data     = "&idList=$($env:TRELLO_API_LIST_ID)&idLabels=$($env:TRELLO_API_BUILD_PASS_ID)&token=$($env:TRELLO_APP_TOKEN)&key=$($env:TRELLO_API_KEY)"
-      $data            = "$($card_name)$($additional_data)$($description)$($trello_data)"
-      curl -s --data $($data) https://api.trello.com/1/cards > $null
-
-on_failure:
   - ps: |
       $appveyor_branch = "[$($env:APPVEYOR_REPO_BRANCH)]"
       $ci_name         = "[AppVeyor]"
       $os_name         = "[Windows]"
       $compiler        = "[$($env:COMPILER)]:%20"
-      $pass            = "#$($env:APPVEYOR_BUILD_NUMBER)%20PASSED"
+      $pass            = "#$($env:APPVEYOR_BUILD_NUMBER)%20FAILED"
       $card_name       = "name=$($appveyor_branch)$($ci_name)$($os_name)$(compiler)$(pass)"
       $additional_data = "&due=null&pos=top"
       $description     = "&desc=\[Logs\]:%20https://ci.appveyor.com/project/$($env:APPVEYOR_REPO_NAME)/build/$($env:APPVEYOR_BUILD_VERSION)/job/$($env:APPVEYOR_JOB_ID)
@@ -57,3 +25,4 @@ on_failure:
       $data            = "$($card_name)$($additional_data)$($description)$($trello_data)"
       Write-Host $($data)
       curl -s --data $($data) https://api.trello.com/1/cards
+
