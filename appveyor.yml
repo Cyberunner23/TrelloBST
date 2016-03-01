@@ -45,7 +45,6 @@ on_success:
 
 on_failure:
   - ps: |
-      Remove-item alias:curl
       $appveyor_branch = "[$($env:APPVEYOR_REPO_BRANCH)]"
       $ci_name         = "[AppVeyor]"
       $os_name         = "[Windows]"
