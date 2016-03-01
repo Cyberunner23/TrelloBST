@@ -109,6 +109,13 @@ pub struct GithubResponse {
     organizations: Vec<GroupInfo>
 }
 
+pub struct AppVeyorEncryptedVars {
+    pub trello_app_token: String,
+    pub list_id:          String,
+    pub build_pass_id:    String,
+    pub build_fail_id:    String
+}
+
 ////////////////////////////////////////////////////////////
 //                         Impls                          //
 ////////////////////////////////////////////////////////////
@@ -228,7 +235,7 @@ pub fn setup_api(term: &mut Box<term::StdoutTerminal>, config_file_path: &mut Pa
 }
 
 
-pub fn create_appveyor_yml(term: &mut Box<term::StdoutTerminal>, config: &config::TrelloBSTAPIConfig, board_info: &mut trello::TrelloBoardInfo, ci_config_output_dir: &mut PathBuf) -> Result<(), &'static str>{
+pub fn create_appveyor_yml(term: &mut Box<term::StdoutTerminal>, config: &config::TrelloBSTAPIConfig, board_info: &mut trello::TrelloBoardInfo, ci_config_output_dir: &PathBuf) -> Result<(), &'static str>{
 
     //Select Repo
     let mut repo_tag = String::new();
@@ -238,10 +245,22 @@ pub fn create_appveyor_yml(term: &mut Box<term::StdoutTerminal>, config: &config
     }
 
     //Encrypt Variables
+    let     status             = utils::StatusPrint::from_str(term, "Encrypting Trello API values.");
+    let mut encrypted_variables: AppVeyorEncryptedVars;
+    match encrypt_vars(&board_info, &config) {
+        Ok(vars) => {
+            status.success(term);
+            encrypted_variables = vars;
+        },
+        Err(err) => {
+            status.error(term);
+            return Err(err)
+        }
+    }
 
     //Generate File
-
-    Ok(())
+    let status = utils::StatusPrint::from_str(term, "Generating appveyor.yml");
+    generate_file(term, ci_config_output_dir, &encrypted_variables)
 }
 
 
@@ -347,16 +366,6 @@ pub fn repo_selection(term: &mut Box<term::StdoutTerminal>, config: &config::Tre
         }
     }
 
-    if response_body == "invalid key" {
-        status.error(term);
-        return Err("Error, the API key is invalid.");
-    }
-
-    if response_body == "invalid token" {
-        status.error(term);
-        return Err("The app token is invalid.");
-    }
-
     if response_body.contains("{\"message\":") {
         status.error(term);
     }
@@ -367,12 +376,191 @@ pub fn repo_selection(term: &mut Box<term::StdoutTerminal>, config: &config::Tre
 }
 
 
+pub fn encrypt_vars(board_info: &trello::TrelloBoardInfo, config: &config::TrelloBSTAPIConfig) -> Result<AppVeyorEncryptedVars, &'static str> {
+
+    let mut enc_trello_app_token: String;
+    match appveyor_encrypt_var(&config, &config.trello_app_token) {
+        Ok(_enc_trello_app_token) => enc_trello_app_token = _enc_trello_app_token,
+        Err(err) => return Err(err)
+    }
+
+    let mut enc_list_id: String;
+    match appveyor_encrypt_var(&config, &board_info.list_id) {
+        Ok(_enc_list_id) => enc_list_id = _enc_list_id,
+        Err(err) => return Err(err)
+    }
+
+    let mut enc_build_pass_id: String;
+    match appveyor_encrypt_var(&config, &board_info.build_pass_id) {
+        Ok(_enc_build_pass_id) => enc_build_pass_id = _enc_build_pass_id,
+        Err(err) => return Err(err)
+    }
+
+    let mut enc_build_fail_id: String;
+    match appveyor_encrypt_var(&config, &board_info.build_fail_id) {
+        Ok(_enc_build_fail_id) => enc_build_fail_id = _enc_build_fail_id,
+        Err(err) => return Err(err)
+    }
+
+    Ok(AppVeyorEncryptedVars{
+        trello_app_token: enc_trello_app_token,
+        list_id:          enc_list_id,
+        build_pass_id:    enc_build_pass_id,
+        build_fail_id:    enc_build_fail_id
+    })
+
+}
 
 
+pub fn appveyor_encrypt_var(config: &config::TrelloBSTAPIConfig, var: &String) -> Result<String, &'static str> {
 
+    let     http_client   = Client::new();
+    let mut response:       Response;
+    let mut response_body = String::new();
+    let     api_call_url:   Url;
+    let     api_call      = format!("https://ci.appveyor.com/api/account/encrypt");
+    let mut header        = Headers::new();
+    let     auth          = format!("Bearer {}", config.appveyor_api_token);
 
+    header.set_raw("Authorization",  vec![auth.into_bytes()]);
+    header.set_raw("Content-Type",   vec![b"application/json;charset=utf-8".to_vec()]);
 
+    match api_call.into_url() {
+        Ok(url) => api_call_url = url,
+        Err(_)  => {
+            return Err("Error while parsing API call url.")
+        }
+    }
 
+    let mut body: String = "{\"plainValue\":\"".to_string();
+    body.push_str(&var[..]);
+    body.push_str("\"}");
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    let body2 = body.clone();
+    //let mut content_length: Vec<u8> = Vec::new();
+    //content_length.push(81);
+    //header.set_raw("Content-Length",   vec![content_length]);
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    let body_len = body.len().clone();
+    match http_client.post(api_call_url)
+    .headers(header)
+    .body(Body::BufBody(&body.into_bytes()[..], body_len))
+    .send() {
+        Ok(res) => response = res,
+        Err(_)  => {
+            return Err("Error calling the API.")
+        }
+    }
+
+    match response.read_to_string(&mut response_body){
+        Ok(_)  => (),
+        Err(_) => {
+            return Err("Error converting the API response to a string.")
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    println!("\\\\\\\\\\\\\\\\\\\\\\{}", body2);
+    println!("//////////////////////{}", response_body);
+    if response_body.contains("{\"message\":") {
+        return Err("Error encrypting variable.")
+    }
+
+    Ok(response_body)
+}
+
+pub fn generate_file(term: &mut Box<term::StdoutTerminal>, ci_config_output_dir: &PathBuf, encrypted_vars: &AppVeyorEncryptedVars) -> Result<(), &'static str> {
+
+    let status                         = utils::StatusPrint::from_str(term, "Generating appveyor.yml");
+    let mut appveyor_file:               File;
+    let mut local_ci_config_output_dir = ci_config_output_dir.clone();
+    local_ci_config_output_dir.push("appveyor.yml");
+    match File::create(local_ci_config_output_dir.as_path()) {
+        Ok(_appveyor_file)  => {
+            appveyor_file = _appveyor_file;
+        }
+        Err(_)    => {
+            status.error(term);
+            return Err("Failed to create appveyor.yml");
+        }
+    }
+
+    let mut file_data: String;
+    file_data = format!("
+environment:
+  BUILD_DIRECTORY: ./
+  COMPILER: MSVC
+  TRELLO_API_KEY: {0}
+  TRELLO_APP_TOKEN:
+    secure: {1}
+  TRELLO_API_LIST_ID:
+    secure: {2}
+  TRELLO_API_BUILD_PASS_ID:
+    secure: {3}
+  TRELLO_API_BUILD_FAIL_ID:
+    secure: {4}
+
+install:
+before_build:
+build_script:
+
+on_success:
+  - ps: |
+    Remove-item alias:curl
+    cd $($env:BUILD_DIRECTORY)
+    7z a -r build.zip ./
+    $buildLink       = [string](curl --silent --upload-file .\\build.zip https://transfer.sh/build.zip)
+    $appveyor_branch = \"[$($env:APPVEYOR_REPO_BRANCH)]\"
+    $ci_name         = \"[AppVeyor]\"
+    $os_name         = \"[Windows]\"
+    $compiler        = \"[$($env:COMPILER)]:%20\"
+    $pass            = \"#$($env:APPVEYOR_BUILD_NUMBER)%20PASSED\"
+    $card_name       = \"name=$($appveyor_branch)$($ci_name)$($os_name)$(compiler)$(pass)\"
+    $additional_data = \"&due=null&pos=top\"
+    $description     = \"&desc=\\[Build\\]:%20$($buildLink)%0D\\[Logs\\]:%20https://ci.appveyor.com/project/$($env:APPVEYOR_REPO_NAME)/build/$($env:APPVEYOR_BUILD_VERSION)/job/$($env:APPVEYOR_JOB_ID)
+    $trello_data     = \"&idList=$($env:TRELLO_API_LIST_ID)&idLabels=$($env:TRELLO_API_BUILD_PASS_ID)&token=$($env:TRELLO_APP_TOKEN)&key=$($env:TRELLO_API_KEY)\"
+    $data            = \"$($env:card_name)$($env:additional_data)$($env:description)$($env:trello_data)\"
+    curl -s --data $($data) https://api.trello.com/1/cards > $null
+
+  on_failure:
+    - ps: |
+    Remove-item alias:curl
+    $appveyor_branch = \"[$($env:APPVEYOR_REPO_BRANCH)]\"
+    $ci_name         = \"[AppVeyor]\"
+    $os_name         = \"[Windows]\"
+    $compiler        = \"[$($env:COMPILER)]:%20\"
+    $pass            = \"#$($env:APPVEYOR_BUILD_NUMBER)%20PASSED\"
+    $card_name       = \"name=$($appveyor_branch)$($ci_name)$($os_name)$(compiler)$(pass)\"
+    $additional_data = \"&due=null&pos=top\"
+    $description     = \"&desc=\\[Logs\\]:%20https://ci.appveyor.com/project/$($env:APPVEYOR_REPO_NAME)/build/$($env:APPVEYOR_BUILD_VERSION)/job/$($env:APPVEYOR_JOB_ID)
+    $trello_data     = \"&idList=$($env:TRELLO_API_LIST_ID)&idLabels=$($env:TRELLO_API_BUILD_PASS_ID)&token=$($env:TRELLO_APP_TOKEN)&key=$($env:TRELLO_API_KEY)\"
+    $data            = \"$($env:card_name)$($env:additional_data)$($env:description)$($env:trello_data)\"
+    curl -s --data $($data) https://api.trello.com/1/cards > $null
+", config::trello_api_key,
+   encrypted_vars.trello_app_token,
+   encrypted_vars.list_id,
+   encrypted_vars.build_pass_id,
+   encrypted_vars.build_fail_id);
+
+    match appveyor_file.write_all(&file_data.into_bytes()[..]) {
+        Ok(()) => (),
+        Err(_) => {
+            status.error(term);
+            return Err("Error while writing to the file.");
+        }
+    }
+
+    match appveyor_file.flush() {
+        Ok(()) => (),
+        Err(_) => {
+            status.error(term);
+            return Err("Error while flushing the file writing buffer.")
+        }
+    }
+
+    status.success(term);
+    Ok(())
+}
 
 
 

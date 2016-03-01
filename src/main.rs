@@ -202,7 +202,6 @@ fn main() {
     ////////////////////////////////////////////////////////////
 
     let mut board_info = trello::TrelloBoardInfo::new();
-    let mut board_list = trello::MembersMeBoardsResponse::new();
 
     let is_board_created = trello::setup_board(&mut term,  &mut config, &mut board_info);
                            trello::setup_list(&mut term,   &mut config, &mut board_info, &is_board_created);
@@ -223,7 +222,7 @@ fn main() {
         let mut option: usize = 0;
         loop {
             get_input_usize!(term, &mut option, "Please enter an option: ");
-            if option <= 3 && option >= 0 {
+            if option <= 3 {
                 break;
             }else {
                 writeln_red!(term, "Please enter a valid option.");
@@ -253,7 +252,7 @@ fn main() {
                     }
                 }
 
-                match travis_ci::create_travis_yml(&mut term, &config, &mut board_info, &mut output_direcrory) {
+                match travis_ci::create_travis_yml(&mut term, &config, &mut board_info, &output_direcrory) {
                     Ok(())   => (),
                     Err(err) => {
                         writeln_red!(term, "Error {}", err);
@@ -278,7 +277,7 @@ fn main() {
                 }
 
                 //Create appveyor.yml
-                match appveyor::create_appveyor_yml(&mut term, &config, &mut board_info, &mut output_direcrory) {
+                match appveyor::create_appveyor_yml(&mut term, &config, &mut board_info, &output_direcrory) {
                     Ok(()) => (),
                     Err(err) => {writeln_red!(term, "Error {}", err);}
                 }

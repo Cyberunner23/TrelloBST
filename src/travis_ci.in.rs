@@ -332,7 +332,7 @@ pub fn setup_api(term: &mut Box<term::StdoutTerminal>, config_file_path: &mut Pa
     Ok(())
 }
 
-pub fn create_travis_yml(term: &mut Box<term::StdoutTerminal>, config: &config::TrelloBSTAPIConfig, board_info: &mut trello::TrelloBoardInfo, ci_config_output_dir: &mut PathBuf) -> Result<(), &'static str> {
+pub fn create_travis_yml(term: &mut Box<term::StdoutTerminal>, config: &config::TrelloBSTAPIConfig, board_info: &mut trello::TrelloBoardInfo, ci_config_output_dir: &PathBuf) -> Result<(), &'static str> {
 
     //Get repo tag and public key
     let mut crypto_state = PKey::new();
@@ -495,12 +495,13 @@ pub fn encrypt_vars(board_info: &mut trello::TrelloBoardInfo, config: &config::T
 }
 
 #[allow(unused_assignments)]
-pub fn generate_file(term: &mut Box<term::StdoutTerminal>, ci_config_output_dir: &mut PathBuf, encrypted_vars: &TravisEncryptedVars, repo_tag: &String) -> Result<(), &'static str> {
+pub fn generate_file(term: &mut Box<term::StdoutTerminal>, ci_config_output_dir: &PathBuf, encrypted_vars: &TravisEncryptedVars, repo_tag: &String) -> Result<(), &'static str> {
 
     let status = utils::StatusPrint::from_str(term, "Generating .travis.yml");
     let mut travis_file: File;
-    ci_config_output_dir.push(".travis.yml");
-    match File::create(ci_config_output_dir.as_path()) {
+    let mut local_ci_config_output_dir = ci_config_output_dir.clone();
+    local_ci_config_output_dir.push(".travis.yml");
+    match File::create(local_ci_config_output_dir.as_path()) {
         Ok(_travis_file)  => {
             travis_file = _travis_file;
         }
