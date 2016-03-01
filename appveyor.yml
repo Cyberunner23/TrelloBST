@@ -29,7 +29,7 @@ build_script:
 on_success:
   - ps: |
     Remove-item alias:curl
-    push-location -path "env:BUILD_DIRECTORY"
+    cd ./target
     7z a -r build.zip ./
     $buildLink       = [string](curl --silent --upload-file .\build.zip https://transfer.sh/build.zip)
     $appveyor_branch = "[$($env:APPVEYOR_REPO_BRANCH)]"
@@ -43,7 +43,6 @@ on_success:
     $trello_data     = "&idList=$($env:TRELLO_API_LIST_ID)&idLabels=$($env:TRELLO_API_BUILD_PASS_ID)&token=$($env:TRELLO_APP_TOKEN)&key=$($env:TRELLO_API_KEY)"
     $data            = "$($env:card_name)$($env:additional_data)$($env:description)$($env:trello_data)"
     curl -s --data $($data) https://api.trello.com/1/cards > $null
-    pop-location
 
   on_failure:
     - ps: |
