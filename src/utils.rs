@@ -24,9 +24,8 @@
 */
 
 use std::collections::BTreeMap;
-use std::env;
 use std::fs;
-use std::fs::{File, OpenOptions};
+use std::fs::OpenOptions;
 use std::io::Read;
 use std::path::PathBuf;
 
@@ -99,6 +98,7 @@ impl StatusPrint {
 //                       Functions                        //
 ////////////////////////////////////////////////////////////
 
+#[allow(dead_code)]
 pub fn is_valid_dir(term: &mut Box<term::StdoutTerminal>, path: &PathBuf) -> bool {
 
     match fs::metadata(&path) {
@@ -123,7 +123,7 @@ pub fn is_valid_dir(term: &mut Box<term::StdoutTerminal>, path: &PathBuf) -> boo
 
         //If file does not exist, check if we can create it with r/w permissions.
         if !tmp_file_path.exists() {
-            if is_valid_file_path(term, &tmp_file_path) {
+            if is_valid_file_path(&tmp_file_path) {
                 match fs::remove_file(&tmp_file_path) {
                     Ok(_)  => (),
                     Err(_) => {writeln_red!(term, "Error: Failed to delete test file: {}", tmp_file_path.to_str().unwrap());}
@@ -136,7 +136,8 @@ pub fn is_valid_dir(term: &mut Box<term::StdoutTerminal>, path: &PathBuf) -> boo
     return true;
 }
 
-pub fn is_valid_file_path(term: &mut Box<term::StdoutTerminal>, path: &PathBuf) -> bool {
+#[allow(dead_code)]
+pub fn is_valid_file_path(path: &PathBuf) -> bool {
 match OpenOptions::new().read(true).write(true).create(true).open(path.as_path()) {
         Ok(_)  => {return true;}
         Err(_) => {return false;}
@@ -194,7 +195,7 @@ pub fn rest_api_call_get_with_header(api_call: &String, header: Headers) -> Resu
                      .headers(header)
                      .send() {
         Ok(res) => response = res,
-        Err(err)  => {
+        Err(_)  => {
             return Err("Error calling the API.");
         }
     }
@@ -327,7 +328,7 @@ pub fn get_single_json_value_as_string(json_string: &String, field: &str) -> Res
     let data: Value;
     match serde_json::from_str(&json_string){
         Ok(_data) => data = _data,
-        Err(err)  => {
+        Err(_)  => {
             return Err("Error parsing the JSON data")
         }
     }

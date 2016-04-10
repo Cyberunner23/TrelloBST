@@ -24,10 +24,9 @@
 */
 
 
-use std::env;
-use std::fs::{File, Metadata, OpenOptions};
+use std::fs::{File, Metadata};
 use std::io::{Read, Write};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 extern crate term;
 
@@ -44,7 +43,7 @@ include!("utils_macros.rs");
 ////////////////////////////////////////////////////////////
 //                        Constants                       //
 ////////////////////////////////////////////////////////////
-pub static trello_api_key: &'static str = "0e190833c4db5fd7d3b0b26ae642d6fa";
+pub static TRELLO_API_KEY: &'static str = "0e190833c4db5fd7d3b0b26ae642d6fa";
 
 
 ////////////////////////////////////////////////////////////

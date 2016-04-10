@@ -25,8 +25,6 @@
 
 
 use std::env;
-use std::error::Error;
-use std::fs;
 use std::io::{self, Write};
 use std::path::PathBuf;
 use std::process::exit;
@@ -35,7 +33,6 @@ extern crate clap;
 use clap::{Arg, App};
 
 extern crate hyper;
-use hyper::header::Headers;
 
 extern crate serde;
 extern crate serde_json;
@@ -69,8 +66,8 @@ fn main() {
     //               Parse command line options               //
     ////////////////////////////////////////////////////////////
 
-    let mut config_file_path = PathBuf::new();
     let mut output_direcrory = PathBuf::new();
+    let mut config_file_path = PathBuf::new();
 
     let matches = App::new("TrelloBST")
         .version(trellobst_version)
@@ -99,7 +96,7 @@ fn main() {
     if matches.is_present("CONFIG") {
         config_file_path = PathBuf::from(matches.value_of("CONFIG").unwrap());
         let status = utils::StatusPrint::from_string(&mut term, format!("Reading/Creating the configuration file at {}", config_file_path.to_str().unwrap()));
-        if !utils::is_valid_file_path(&mut term, &config_file_path) {
+        if !utils::is_valid_file_path(&config_file_path) {
             status.error(&mut term);
             writeln_red!(term, "Error: Please enter a valid path for the output file. (Including read/write permissions.)");
             exit(-1);
@@ -113,7 +110,7 @@ fn main() {
             Some(home_dir) => {
                 config_file_path = home_dir;
                 config_file_path.push(".TrelloBST.cfg");
-                if utils::is_valid_file_path(&mut term, &config_file_path) {
+                if utils::is_valid_file_path(&config_file_path) {
                     status.success(&mut term);
                     is_read_create_success = true;
                 } else {
@@ -132,7 +129,7 @@ fn main() {
             writeln_red!(term, "Error: Reading/Creating configuration file at default location failed. Falling back to ./.TrelloBST.cfg");
             let status = utils::StatusPrint::from_str(&mut term, "Reading/Creating the configuration file at ./.TrelloBST.cfg");
             config_file_path = PathBuf::from("./.TrelloBST.cfg".to_string());
-            if utils::is_valid_file_path(&mut term, &config_file_path) {
+            if utils::is_valid_file_path(&config_file_path) {
                 status.success(&mut term);
             } else {
                 status.error(&mut term);
@@ -262,7 +259,7 @@ fn main() {
             2 => {
 
                 //Get access token / API key
-                appveyor::setup_api(&mut term, &mut config_file_path, &mut config);
+                appveyor::setup_api(&mut term, &mut config);
 
                 //Save access token.
                 if config_file_path != PathBuf::new() {

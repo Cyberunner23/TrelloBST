@@ -39,11 +39,7 @@ extern crate term;
 
 
 extern crate hyper;
-use hyper::Client;
-use hyper::client::IntoUrl;
-use hyper::client::response::Response;
 use hyper::header::Headers;
-use hyper::Url;
 
 use serde_json::Value;
 
@@ -124,13 +120,13 @@ impl ParsedHooksResponse {
         let data: Value;
         match serde_json::from_str(&json_data){
             Ok(_data) => data = _data,
-            Err(err)  => {
+            Err(_)  => {
                 return Err("Error parsing the JSON data")
             }
         }
 
         //Get JSON object
-        let mut object: BTreeMap<String, Value>;
+        let object: BTreeMap<String, Value>;
         match data.as_object().ok_or("Error: JSON data does not describe an object.") {
             Ok(_object) => {
                 object  = _object.clone();
@@ -304,7 +300,7 @@ pub fn setup_api(term: &mut Box<term::StdoutTerminal>, config_file_path: &mut Pa
         github_token = github_token.trim_matches(' ').to_string();
 
         //Convert github token to travis api key
-        let mut api_call                = format!("https://api.travis-ci.org/auth/github?github_token={}", github_token);
+        let     api_call                = format!("https://api.travis-ci.org/auth/github?github_token={}", github_token);
         let mut response_body           = String::new();
         let mut header                  = Headers::new();
         let mut content_length: Vec<u8> = Vec::new();
@@ -354,7 +350,7 @@ pub fn get_repo_tag_and_pub_key(term: &mut Box<term::StdoutTerminal>, config: &c
     //Get repos.
     let      status = utils::StatusPrint::from_str(term, "Acquiring the repo list from Travis-CI.");
     let mut  hooks  = ParsedHooksResponse::new();
-    match acquire_hooks(term, config)  {
+    match acquire_hooks(config)  {
         Ok(_hooks) => {
             hooks = _hooks;
             status.success(term);
@@ -382,7 +378,7 @@ pub fn get_repo_tag_and_pub_key(term: &mut Box<term::StdoutTerminal>, config: &c
 
             get_input_usize!(term, &mut option, "Please enter an option: ");
 
-            if option <= counter && option >= 0 {
+            if option <= counter {
                 break;
             }else {
                 writeln_red!(term, "Please enter a valid option.");
@@ -400,7 +396,7 @@ pub fn get_repo_tag_and_pub_key(term: &mut Box<term::StdoutTerminal>, config: &c
         if !hook.active {
             let     status        = utils::StatusPrint::from_str(term, "Linking repo to Travis-CI.");
             let     api_call      = format!("https://api.travis-ci.org/hooks/{}?hook[active]=true", hook.id);
-            let mut auth          = format!("token {}", config.travis_access_token);
+            let     auth          = format!("token {}", config.travis_access_token);
             let mut response_body = String::new();
             let mut header        = Headers::new();
 
@@ -410,7 +406,6 @@ pub fn get_repo_tag_and_pub_key(term: &mut Box<term::StdoutTerminal>, config: &c
             header.set_raw("Host",          vec![b"api.travis-ci.org".to_vec()]);
             header.set_raw("Content-Type",  vec![b"application/json".to_vec()]);
 
-            let mut is_api_call_success = true;
             match utils::rest_api_call_put_with_header(&api_call, header) {
                 Ok(_response_body) => {
                     status.success(term);
@@ -428,8 +423,8 @@ pub fn get_repo_tag_and_pub_key(term: &mut Box<term::StdoutTerminal>, config: &c
         //Public Key
         let     status              = utils::StatusPrint::from_str(term, "Acquiring repo's public RSA key.");
         let     api_call            = format!("https://api.travis-ci.org/repos/{}/key", repo_tag);
-        let mut response_body       = String::new();
         let mut is_api_call_success = true;
+        let mut response_body       = String::new();
 
         match utils::rest_api_call_get(&api_call) {
             Ok(_response_body) => {
@@ -562,7 +557,7 @@ after_failure:
       && data=${{card_name}}${{additional_data}}${{description}}${{trello_data}}
       && curl -s -o /dev/null -w \"%{{http_code}}\\n\" --data ${{data}} https://api.trello.com/1/cards;
     fi
-", config::trello_api_key,
+", config::TRELLO_API_KEY,
    encrypted_vars.trello_app_token,
    encrypted_vars.list_id,
    encrypted_vars.build_pass_id,
@@ -589,10 +584,10 @@ after_failure:
     Ok(())
 }
 
-pub fn acquire_hooks(term: &mut Box<term::StdoutTerminal>, config: &config::TrelloBSTAPIConfig) -> Result<ParsedHooksResponse, &'static str> {
+pub fn acquire_hooks(config: &config::TrelloBSTAPIConfig) -> Result<ParsedHooksResponse, &'static str> {
 
-    let mut api_call      = format!("https://api.travis-ci.org/hooks");
-    let mut auth          = format!("token {}", config.travis_access_token);
+    let     api_call      = format!("https://api.travis-ci.org/hooks");
+    let     auth          = format!("token {}", config.travis_access_token);
     let mut response_body = String::new();
     let mut header        = Headers::new();
 

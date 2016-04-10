@@ -26,10 +26,9 @@
 use std::collections::BTreeMap;
 use std::error::Error;
 use std::io;
-use std::io::{Cursor, Write};
+use std::io::Write;
 use std::fs::File;
 use std::path::PathBuf;
-use std::process::exit;
 
 
 
@@ -169,7 +168,7 @@ impl GithubResponse {
         let data: Value;
         match serde_json::from_str(&response_body){
             Ok(_data) => data = _data,
-            Err(err)  => {
+            Err(_)  => {
                 return Err("Error parsing the JSON data")
             }
         }
@@ -189,13 +188,13 @@ impl GithubResponse {
                 None              => return Err("Error: Expected an array of JSON objects in GithubResponse.")
             }
 
-            let mut group_type_value: Value;
+            let group_type_value: Value;
             match group_info.get("groupType") {
                 Some(_group_type_value) => group_type_value = _group_type_value.clone(),
                 None              => return Err("Error: Could not find the \"groupType\" field in a GithubResponse object.")
             }
 
-            let mut group_type: String;
+            let group_type: String;
             match group_type_value.as_string() {
                 Some(_group_type) => group_type = _group_type.clone().to_string(),
                 None              => return Err("Error: Failed to parse the value of \"groupType\" in the GithubResponse object.")
@@ -224,7 +223,7 @@ impl GithubResponse {
 //                       Functions                        //
 ////////////////////////////////////////////////////////////
 
-pub fn setup_api(term: &mut Box<term::StdoutTerminal>, config_file_path: &mut PathBuf, config: &mut config::TrelloBSTAPIConfig){
+pub fn setup_api(term: &mut Box<term::StdoutTerminal>, config: &mut config::TrelloBSTAPIConfig){
 
     if config.appveyor_api_token.is_empty() {
         //Get appveyo api key
@@ -245,8 +244,8 @@ pub fn create_appveyor_yml(term: &mut Box<term::StdoutTerminal>, config: &config
     }
 
     //Encrypt Variables
-    let     status             = utils::StatusPrint::from_str(term, "Encrypting Trello API values.");
-    let mut encrypted_variables: AppVeyorEncryptedVars;
+    let status             = utils::StatusPrint::from_str(term, "Encrypting Trello API values.");
+    let encrypted_variables: AppVeyorEncryptedVars;
     match encrypt_vars(&board_info, &config) {
         Ok(vars) => {
             status.success(term);
@@ -378,25 +377,25 @@ pub fn repo_selection(term: &mut Box<term::StdoutTerminal>, config: &config::Tre
 
 pub fn encrypt_vars(board_info: &trello::TrelloBoardInfo, config: &config::TrelloBSTAPIConfig) -> Result<AppVeyorEncryptedVars, &'static str> {
 
-    let mut enc_trello_app_token: String;
+    let enc_trello_app_token: String;
     match appveyor_encrypt_var(&config, &config.trello_app_token) {
         Ok(_enc_trello_app_token) => enc_trello_app_token = _enc_trello_app_token,
         Err(err) => return Err(err)
     }
 
-    let mut enc_list_id: String;
+    let enc_list_id: String;
     match appveyor_encrypt_var(&config, &board_info.list_id) {
         Ok(_enc_list_id) => enc_list_id = _enc_list_id,
         Err(err) => return Err(err)
     }
 
-    let mut enc_build_pass_id: String;
+    let enc_build_pass_id: String;
     match appveyor_encrypt_var(&config, &board_info.build_pass_id) {
         Ok(_enc_build_pass_id) => enc_build_pass_id = _enc_build_pass_id,
         Err(err) => return Err(err)
     }
 
-    let mut enc_build_fail_id: String;
+    let enc_build_fail_id: String;
     match appveyor_encrypt_var(&config, &board_info.build_fail_id) {
         Ok(_enc_build_fail_id) => enc_build_fail_id = _enc_build_fail_id,
         Err(err) => return Err(err)
@@ -485,7 +484,7 @@ pub fn generate_file(term: &mut Box<term::StdoutTerminal>, ci_config_output_dir:
         }
     }
 
-    let mut file_data: String;
+    let file_data: String;
     file_data = format!("
 environment:
   BUILD_DIRECTORY: ./
@@ -536,7 +535,7 @@ on_failure:
       $trello_data     = \"&idList=$($env:TRELLO_API_LIST_ID)&idLabels=$($env:TRELLO_API_BUILD_FAIL_ID)&token=$($env:TRELLO_APP_TOKEN)&key=$($env:TRELLO_API_KEY)\"
       $data            = \"$($env:card_name)$($env:additional_data)$($env:description)$($env:trello_data)\"
       curl -s --data $($data) https://api.trello.com/1/cards > $null
-", config::trello_api_key,
+", config::TRELLO_API_KEY,
    encrypted_vars.trello_app_token,
    encrypted_vars.list_id,
    encrypted_vars.build_pass_id,
