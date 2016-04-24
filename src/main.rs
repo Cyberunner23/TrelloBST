@@ -55,7 +55,7 @@ include!("utils_macros.rs");
 
 fn main() {
 
-    let     trellobst_version = "0.0.1";
+    let     trellobst_version = "1.0.0";
     let mut term              = term::stdout().unwrap();
 
     writeln_green!(term, "╔══════════════════════════════════════════════════════════╗");
