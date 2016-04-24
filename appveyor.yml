@@ -2,6 +2,7 @@ os: Visual Studio 2015
 
 environment:
   OPENSSL_LIB_DIR: C:\OpenSSL
+  OPENSSL_INCLUDE_DIR: C:\OpenSSL\include
   BUILD_DIRECTORY: ./target
   TRELLO_API_KEY: 0e190833c4db5fd7d3b0b26ae642d6fa
   TRELLO_APP_TOKEN:
