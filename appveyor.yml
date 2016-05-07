@@ -24,7 +24,7 @@ environment:
 
 install:
   - ps: .\appveyor_rust_install.ps1
-  - ps: Start-FileDownload "http://slproweb.com/download/Win64OpenSSL-1_0_2g.exe"
+  - ps: Start-FileDownload "https://slproweb.com/download/Win64OpenSSL-1_0_2h.exe"
   - Win64OpenSSL-1_0_2g.exe /SILENT /VERYSILENT /SP- /DIR="C:\OpenSSL"
 
 build_script:
