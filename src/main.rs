@@ -266,10 +266,10 @@ fn main() {
 
     let runtime_mode: RuntimeMode = RuntimeMode::new(&matches.is_present("PUSH"));
     match runtime_mode {
-        Push => {
+        RuntimeMode::Push => {
             //TODO: Push
         },
-        Generate => {
+        RuntimeMode::Generate => {
             //TODO: Generate
         }
     }
