@@ -25,12 +25,15 @@
 
 
 use std::env;
+use std::error::Error;
+use std::fs;
+use std::fs::OpenOptions;
 use std::io::{self, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::exit;
 
 extern crate clap;
-use clap::{Arg, App};
+use clap::{Arg, App, AppSettings, SubCommand};
 
 extern crate hyper;
 
@@ -53,9 +56,137 @@ mod utils;
 include!("utils_macros.rs");
 
 
+////////////////////////////////////////////////////////////
+//                      Structs/Enums                     //
+////////////////////////////////////////////////////////////
+
+pub enum RuntimeMode {
+    Generate,
+    Push
+}
+
+pub enum ConfigMode {
+    None,
+    Default,
+    Custom
+}
+
+pub enum OutputMode {
+    Default,
+    Custom
+}
+
+pub struct GenConfig {
+    pub config_mode:      ConfigMode,
+    pub output_mode:      OutputMode,
+    pub config_file_path: PathBuf,
+    pub output_direcrory: PathBuf
+}
+
+pub struct PushConfig {
+    pub cli_op_trello_api_token:         String,
+    pub cli_op_trello_api_list_id:       String,
+    pub cli_op_trello_api_build_pass_id: String,
+    pub cli_op_trello_api_build_fail_id: String,
+    pub card_title:                      String,
+    pub card_desc:                       String,
+    pub compress_dir:                    String
+}
+
+
+////////////////////////////////////////////////////////////
+//                          Impls                         //
+////////////////////////////////////////////////////////////
+
+impl RuntimeMode {
+    pub fn new(is_push_mode: &bool) -> RuntimeMode {
+        if *is_push_mode {
+            RuntimeMode::Push
+        } else {
+            RuntimeMode::Generate
+        }
+    }
+}
+
+
+////////////////////////////////////////////////////////////
+//                          Funcs                         //
+////////////////////////////////////////////////////////////
+
+pub fn file_path_validator(file_path: String) -> Result<(), String> {
+    match OpenOptions::new().read(true).write(true).create(true).open(Path::new(&file_path)) {
+        Ok(_)  => Ok(()),
+        Err(err) => {
+            let mut err_string = "Cannot open file \"".to_string();
+            err_string.push_str(file_path.as_str());
+            err_string.push_str("\" due to an error: \"");
+            err_string.push_str(err.description());
+            err_string.push_str("\"");
+            Err(err_string)
+        }
+    }
+}
+
+pub fn dir_path_validator(dir_path: String) -> Result<(), String> {
+
+    //Check if it's even a directory.
+    match fs::metadata(&dir_path) {
+        Ok(metadata) => {
+            if !metadata.is_dir() {
+                let mut err_string = "\"".to_string();
+                err_string.push_str(dir_path.as_str());
+                err_string.push_str("\" is not a directory.");
+                return Err(err_string);
+            }
+        },
+        Err(err)     => {
+            let mut err_string = "Failed to acquire metadata for \"".to_string();
+            err_string.push_str(dir_path.as_str());
+            err_string.push_str("\", do you have permission to write to this directory?");
+            return Err(err_string);
+        }
+    }
+
+    //Test if we can write a file to this directory
+    let mut counter = 0;
+    loop {
+        //Generate a file name.
+        let mut tmp_file_path:     String = dir_path.clone();
+        let     tmp_file_name:     String = format!("ab{}ba.tmp", counter);
+        let mut tmp_file_path_buf: PathBuf;
+        tmp_file_path.push_str(tmp_file_name.as_str());
+        tmp_file_path_buf = PathBuf::from(&tmp_file_path);
+
+        //If file does not exist, check if we can create it with r/w permissions.
+        if !tmp_file_path_buf.exists() {
+            match OpenOptions::new().read(true).write(true).create(true).open(&tmp_file_path_buf.as_path()) {
+                Ok(_)    => {
+                    match fs::remove_file(&tmp_file_path_buf) {
+                        Ok(_)  => return Ok(()),
+                        Err(err) => {
+                            let mut err_string = "Failed to delete temporary file: \"".to_string();
+                            err_string.push_str(&tmp_file_path);
+                            err_string.push_str("\"");
+                            return Err(err_string);
+                        }
+                    }
+                }
+                Err(err) => {
+                    let mut err_string = "Invalid output directory: \"".to_string();
+                    err_string.push_str(err.description());
+                    err_string.push_str("\"");
+                    return Err(err_string);
+                }
+            }
+        }
+        counter += 1;
+    }
+}
+
+
 fn main() {
 
-    let     trellobst_version = "1.0.0";
+    let     trellobst_version = "2.0.0-dev";
     let mut term              = term::stdout().unwrap();
 
     writeln_green!(term, "╔══════════════════════════════════════════════════════════╗");
@@ -66,17 +197,60 @@ fn main() {
     //               Parse command line options               //
     ////////////////////////////////////////////////////////////
 
-    let mut output_direcrory = PathBuf::new();
     let mut config_file_path = PathBuf::new();
+    let mut output_direcrory = PathBuf::new();
 
     let matches = App::new("TrelloBST")
         .version(trellobst_version)
+        .setting(AppSettings::SubcommandsNegateReqs)
+        .subcommand(SubCommand::with_name("PUSH")
+            .about("Pushes a build status to a trello board")
+            .arg(Arg::with_name("CARD_TITLE")
+                .short("t")
+                .long("title")
+                .help("Sets the title of the card.")
+                .takes_value(true)
+                .required(true))
+            .arg(Arg::with_name("CARD_DESC")
+                 .short("d")
+                 .long("description")
+                 .help("Sets the description of the card.")
+                 .takes_value(true)
+                 .required(true))
+            .arg(Arg::with_name("TRELLO_API_TOKEN")
+                 .short("T")
+                 .long("token")
+                 .help("Manually overrides the trello api token from the \"TRELLO_API_TOKEN\" environment variable.")
+                 .takes_value(true)
+                 .required(false))
+            .arg(Arg::with_name("TRELLO_LIST_ID")
+                 .short("L")
+                 .long("list-id")
+                 .help("Manually overrides the trello list id from the \"TRELLO_API_LIST_ID\" environment variable.")
+                 .takes_value(true)
+                 .required(false))
+            .arg(Arg::with_name("TRELLO_BUILD_PASS_ID")
+                 .short("P")
+                 .long("pass-id")
+                 .help("Manually overrides the trello build pass id from the \"TRELLO_API_BUILD_PASS_ID\" environment variable.")
+                 .takes_value(true)
+                 .required(false))
+            .arg(Arg::with_name("TRELLO_BUILD_FAIL_ID")
+                 .short("F")
+                 .long("fail-id")
+                 .help("Manually overrides the trello build fail id from the \"TRELLO_API_FAIL_PASS_ID\" environment variable.")
+                 .takes_value(true)
+                 .required(false))
+        )
         .arg(Arg::with_name("CONFIG")
+            .conflicts_with("NO-CONFIG")
             .short("c")
             .long("config")
             .help("Sets a custom TrelloBST configuration file.")
+            .validator(file_path_validator)
             .takes_value(true))
         .arg(Arg::with_name("NO-CONFIG")
+            .conflicts_with("CONFIG")
             .short("n")
             .long("no-config")
             .help("Won't use a configuration file for TrelloBST.")
@@ -85,14 +259,22 @@ fn main() {
             .short("o")
             .long("output")
             .help("Sets the output directory for the CI configuration file.")
+            .validator(dir_path_validator)
             .takes_value(true))
         .get_matches();
 
-    if matches.is_present("CONFIG") && matches.is_present("NO-CONFIG") {
-        writeln_red!(term, "Error: --config (-c) and --no-config (-n) cannot be used at the same time.");
-        exit(-1);
+
+    let runtime_mode: RuntimeMode = RuntimeMode::new(&matches.is_present("PUSH"));
+    match runtime_mode {
+        Push => {
+            //TODO: Push
+        },
+        Generate => {
+            //TODO: Generate
+        }
     }
 
+    //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
     if matches.is_present("CONFIG") {
         config_file_path = PathBuf::from(matches.value_of("CONFIG").unwrap());
         let status = utils::StatusPrint::from_string(&mut term, format!("Reading/Creating the configuration file at {}", config_file_path.to_str().unwrap()));
@@ -152,6 +334,8 @@ fn main() {
             exit(-1);
         }
     }
+
+
 
     ////////////////////////////////////////////////////////////
     //                     Parse config                       //

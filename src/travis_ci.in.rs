@@ -489,6 +489,11 @@ pub fn encrypt_vars(board_info: &mut trello::TrelloBoardInfo, config: &config::T
     }
 }
 
+
+
+
+
+//NOTE: DEPRECATED, replaced with template and token replacing
 #[allow(unused_assignments)]
 pub fn generate_file(term: &mut Box<term::StdoutTerminal>, ci_config_output_dir: &PathBuf, encrypted_vars: &TravisEncryptedVars, repo_tag: &String) -> Result<(), &'static str> {
 

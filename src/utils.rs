@@ -98,7 +98,6 @@ impl StatusPrint {
 //                       Functions                        //
 ////////////////////////////////////////////////////////////
 
-#[allow(dead_code)]
 pub fn is_valid_dir(term: &mut Box<term::StdoutTerminal>, path: &PathBuf) -> bool {
 
     match fs::metadata(&path) {
@@ -136,7 +135,6 @@ pub fn is_valid_dir(term: &mut Box<term::StdoutTerminal>, path: &PathBuf) -> boo
     return true;
 }
 
-#[allow(dead_code)]
 pub fn is_valid_file_path(path: &PathBuf) -> bool {
 match OpenOptions::new().read(true).write(true).create(true).open(path.as_path()) {
         Ok(_)  => {return true;}
