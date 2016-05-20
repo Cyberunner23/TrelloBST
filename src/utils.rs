@@ -337,6 +337,7 @@ pub fn get_single_json_value_as_string(json_string: &String, field: &str) -> Res
             object  = _object.clone();
         },
         Err(err)    => {
+
             return Err(err);
         }
     }

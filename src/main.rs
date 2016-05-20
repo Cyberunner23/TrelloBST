@@ -47,6 +47,7 @@ mod config;
 mod travis_ci;
 mod trello;
 mod utils;
+mod push;
 
 
 ////////////////////////////////////////////////////////////
@@ -67,30 +68,21 @@ pub enum RuntimeMode {
 
 pub enum ConfigMode {
     None,
-    Default,
-    Custom
+    Default(PathBuf),
+    Custom(PathBuf)
 }
 
 pub enum OutputMode {
-    Default,
-    Custom
+    Default(PathBuf),
+    Custom(PathBuf)
 }
 
+//TODO?: Add card values
 pub struct GenConfig {
     pub config_mode:      ConfigMode,
     pub output_mode:      OutputMode,
-    pub config_file_path: PathBuf,
-    pub output_direcrory: PathBuf
-}
-
-pub struct PushConfig {
-    pub cli_op_trello_api_token:         String,
-    pub cli_op_trello_api_list_id:       String,
-    pub cli_op_trello_api_build_pass_id: String,
-    pub cli_op_trello_api_build_fail_id: String,
-    pub card_title:                      String,
-    pub card_desc:                       String,
-    pub compress_dir:                    String
+    pub trello_api_key:   String,
+    pub trello_api_token: String
 }
 
 
@@ -142,7 +134,7 @@ pub fn dir_path_validator(dir_path: String) -> Result<(), String> {
         Err(err)     => {
             let mut err_string = "Failed to acquire metadata for \"".to_string();
             err_string.push_str(dir_path.as_str());
-            err_string.push_str("\", do you have permission to write to this directory?");
+            err_string.push_str("\", do you have permission to read/write to this directory?");
             return Err(err_string);
         }
     }
@@ -172,7 +164,7 @@ pub fn dir_path_validator(dir_path: String) -> Result<(), String> {
                     }
                 }
                 Err(err) => {
-                    let mut err_string = "Invalid output directory: \"".to_string();
+                    let mut err_string = "Invalid directory: \"".to_string();
                     err_string.push_str(err.description());
                     err_string.push_str("\"");
                     return Err(err_string);
@@ -187,6 +179,8 @@ pub fn dir_path_validator(dir_path: String) -> Result<(), String> {
 fn main() {
 
     let     trellobst_version = "2.0.0-dev";
+    //NOTE: Public developer key
+    let     trellobst_api_key = "0e190833c4db5fd7d3b0b26ae642d6fa";
     let mut term              = term::stdout().unwrap();
 
     writeln_green!(term, "╔══════════════════════════════════════════════════════════╗");
@@ -203,7 +197,7 @@ fn main() {
     let matches = App::new("TrelloBST")
         .version(trellobst_version)
         .setting(AppSettings::SubcommandsNegateReqs)
-        .subcommand(SubCommand::with_name("PUSH")
+        .subcommand(SubCommand::with_name("push")
             .about("Pushes a build status to a trello board")
             .arg(Arg::with_name("CARD_TITLE")
                 .short("t")
@@ -216,7 +210,19 @@ fn main() {
                  .long("description")
                  .help("Sets the description of the card.")
                  .takes_value(true)
-                 .required(true))
+                 .required(false))
+            .arg(Arg::with_name("BUILD_PASS")
+                 .conflicts_with("BUILD_FAIL")
+                 .short("p")
+                 .long("pass")
+                 .help("Sets build status to passed.")
+                 .takes_value(false))
+            .arg(Arg::with_name("BUILD_FAIL")
+                 .conflicts_with("BUILD_PASS")
+                 .short("f")
+                 .long("fail")
+                 .help("Sets build status to failed.")
+                 .takes_value(false))
             .arg(Arg::with_name("TRELLO_API_TOKEN")
                  .short("T")
                  .long("token")
@@ -264,10 +270,58 @@ fn main() {
         .get_matches();
 
 
-    let runtime_mode: RuntimeMode = RuntimeMode::new(&matches.is_present("PUSH"));
+    let runtime_mode: RuntimeMode = RuntimeMode::new(&matches.is_present("push"));
     match runtime_mode {
         RuntimeMode::Push => {
-            //TODO: Push
+
+            let status = utils::StatusPrint::from_str(&mut term, "Pushing card to Trello.");
+
+            //AHA WERE GETTING CLOSER
+            if matches.is_present("CARD_TITLE") {
+                println!("----------------------------")
+            }
+            println!("123 {}", matches.value_of("CARD_TITLE").unwrap_or("0987654321").to_string());
+
+            //Create config struct
+            let push_config: push::PushConfig;
+            match push::PushConfig::fill(matches.value_of("CARD_TITLE").unwrap().to_string(),
+                                         matches.value_of("CARD_DESC").unwrap_or("").to_string(),
+                                         matches.value_of("TRELLO_BUILD_PASS_ID").unwrap_or("").to_string(),
+                                         matches.value_of("TRELLO_BUILD_FAIL_ID").unwrap_or("").to_string(),
+                                         matches.value_of("TRELLO_LIST_ID").unwrap_or("").to_string(),
+                                         matches.value_of("TRELLO_API_TOKEN").unwrap_or("").to_string()) {
+                Ok(_push_config) => {push_config = _push_config;}
+                Err(err)         => {
+                    writeln_red!(term, "{}", err);
+                    exit(-1);
+                }
+            }
+
+            //Validate --pass --fail
+            if !matches.is_present("BUILD_PASS") && !matches.is_present("BUILD_FAIL") {
+                writeln_red!(term, "Error: One of --pass and --fail must be used.");
+                exit(-1);
+            }
+
+            let mut is_build_pass: bool;
+            if matches.is_present("BUILD_PASS") {
+                is_build_pass = true;
+            } else {
+                is_build_pass = false;
+            }
+
+            //Push card to Trello
+            match push::push(trellobst_api_key.to_string(), is_build_pass, push_config) {
+                Ok(()) => {
+                    status.success(&mut term);
+                    exit(0);
+                }
+                Err(err) => {
+                    status.error(&mut term);
+                    writeln_red!(term, "Error while pushing the card to Trello: {}", err);
+                    exit(-1);
+                }
+            }
         },
         RuntimeMode::Generate => {
             //TODO: Generate
