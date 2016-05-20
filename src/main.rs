@@ -58,50 +58,6 @@ include!("utils_macros.rs");
 
 
 ////////////////////////////////////////////////////////////
-//                      Structs/Enums                     //
-////////////////////////////////////////////////////////////
-
-pub enum RuntimeMode {
-    Generate,
-    Push
-}
-
-pub enum ConfigMode {
-    None,
-    Default(PathBuf),
-    Custom(PathBuf)
-}
-
-pub enum OutputMode {
-    Default(PathBuf),
-    Custom(PathBuf)
-}
-
-//TODO?: Add card values
-pub struct GenConfig {
-    pub config_mode:      ConfigMode,
-    pub output_mode:      OutputMode,
-    pub trello_api_key:   String,
-    pub trello_api_token: String
-}
-
-
-////////////////////////////////////////////////////////////
-//                          Impls                         //
-////////////////////////////////////////////////////////////
-
-impl RuntimeMode {
-    pub fn new(is_push_mode: &bool) -> RuntimeMode {
-        if *is_push_mode {
-            RuntimeMode::Push
-        } else {
-            RuntimeMode::Generate
-        }
-    }
-}
-
-
-////////////////////////////////////////////////////////////
 //                          Funcs                         //
 ////////////////////////////////////////////////////////////
 
@@ -175,6 +131,10 @@ pub fn dir_path_validator(dir_path: String) -> Result<(), String> {
     }
 }
 
+
+////////////////////////////////////////////////////////////
+//                          Main                          //
+////////////////////////////////////////////////////////////
 
 fn main() {
 
@@ -262,133 +222,139 @@ fn main() {
             .help("Won't use a configuration file for TrelloBST.")
             .takes_value(false))
         .arg(Arg::with_name("OUTPUT_DIR")
+            .conflicts_with("PRINT_OUTPUT")
             .short("o")
             .long("output")
             .help("Sets the output directory for the CI configuration file.")
             .validator(dir_path_validator)
             .takes_value(true))
+        .arg(Arg::with_name("PRINT_OUTPUT")
+            .conflicts_with("OUTPUT_DIR")
+            .short("p")
+            .long("print")
+            .help("Print the resulting CI config instead of putting it in a file.")
+            .takes_value(false))
         .get_matches();
 
 
-    let runtime_mode: RuntimeMode = RuntimeMode::new(&matches.is_present("push"));
-    match runtime_mode {
-        RuntimeMode::Push => {
+    if let Some(push_matches) = matches.subcommand_matches("push") {
 
-            let status = utils::StatusPrint::from_str(&mut term, "Pushing card to Trello.");
+        //Validate --pass --fail
+        if !push_matches.is_present("BUILD_PASS") && !push_matches.is_present("BUILD_FAIL") {
+            writeln_red!(term, "Error: One of --pass and --fail must be used.");
+            exit(-1);
+        }
 
-            //AHA WERE GETTING CLOSER
-            if matches.is_present("CARD_TITLE") {
-                println!("----------------------------")
-            }
-            println!("123 {}", matches.value_of("CARD_TITLE").unwrap_or("0987654321").to_string());
-
-            //Create config struct
-            let push_config: push::PushConfig;
-            match push::PushConfig::fill(matches.value_of("CARD_TITLE").unwrap().to_string(),
-                                         matches.value_of("CARD_DESC").unwrap_or("").to_string(),
-                                         matches.value_of("TRELLO_BUILD_PASS_ID").unwrap_or("").to_string(),
-                                         matches.value_of("TRELLO_BUILD_FAIL_ID").unwrap_or("").to_string(),
-                                         matches.value_of("TRELLO_LIST_ID").unwrap_or("").to_string(),
-                                         matches.value_of("TRELLO_API_TOKEN").unwrap_or("").to_string()) {
-                Ok(_push_config) => {push_config = _push_config;}
-                Err(err)         => {
-                    writeln_red!(term, "{}", err);
-                    exit(-1);
-                }
-            }
-
-            //Validate --pass --fail
-            if !matches.is_present("BUILD_PASS") && !matches.is_present("BUILD_FAIL") {
-                writeln_red!(term, "Error: One of --pass and --fail must be used.");
+        //Create config struct
+        let status = utils::StatusPrint::from_str(&mut term, "Pushing card to Trello.");
+        let push_config: push::PushConfig;
+        match push::PushConfig::fill(push_matches.value_of("CARD_TITLE").unwrap().to_string(),
+                                     push_matches.value_of("CARD_DESC").unwrap_or("").to_string(),
+                                     push_matches.value_of("TRELLO_BUILD_PASS_ID").unwrap_or("").to_string(),
+                                     push_matches.value_of("TRELLO_BUILD_FAIL_ID").unwrap_or("").to_string(),
+                                     push_matches.value_of("TRELLO_LIST_ID").unwrap_or("").to_string(),
+                                     push_matches.value_of("TRELLO_API_TOKEN").unwrap_or("").to_string()) {
+            Ok(_push_config) => {push_config = _push_config;}
+            Err(err)         => {
+                status.error(&mut term);
+                writeln_red!(term, "{}", err);
                 exit(-1);
             }
+        }
 
-            let mut is_build_pass: bool;
-            if matches.is_present("BUILD_PASS") {
-                is_build_pass = true;
-            } else {
-                is_build_pass = false;
+        //Push card to Trello
+        match push::push(trellobst_api_key.to_string(), push_matches.is_present("BUILD_PASS"), push_config) {
+            Ok(()) => {
+                status.success(&mut term);
+                exit(0);
             }
-
-            //Push card to Trello
-            match push::push(trellobst_api_key.to_string(), is_build_pass, push_config) {
-                Ok(()) => {
-                    status.success(&mut term);
-                    exit(0);
-                }
-                Err(err) => {
-                    status.error(&mut term);
-                    writeln_red!(term, "Error while pushing the card to Trello: {}", err);
-                    exit(-1);
-                }
+            Err(err) => {
+                status.error(&mut term);
+                writeln_red!(term, "Error while pushing the card to Trello: {}", err);
+                exit(-1);
             }
-        },
-        RuntimeMode::Generate => {
-            //TODO: Generate
         }
     }
 
-    //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-    if matches.is_present("CONFIG") {
-        config_file_path = PathBuf::from(matches.value_of("CONFIG").unwrap());
-        let status = utils::StatusPrint::from_string(&mut term, format!("Reading/Creating the configuration file at {}", config_file_path.to_str().unwrap()));
-        if !utils::is_valid_file_path(&config_file_path) {
-            status.error(&mut term);
-            writeln_red!(term, "Error: Please enter a valid path for the output file. (Including read/write permissions.)");
-            exit(-1);
-        }
-        status.success(&mut term);
-    } else if !matches.is_present("NO-CONFIG") {
 
-        let is_read_create_success: bool;
-        let status = utils::StatusPrint::from_str(&mut term, "Reading/Creating the configuration file at the default location.");
+    //If push subcommand not used i.e. generate a CI config
+    let mut config_mode: Option<PathBuf>;
+    let mut output_mode: Option<PathBuf>;
+
+    //Check config file cli options
+    if !matches.is_present("CONFIG") && !matches.is_present("NO_CONFIG") {
+
+        //Default config
+        //Check if home directory works
+        let valid_path_found: bool;
         match env::home_dir() {
             Some(home_dir) => {
-                config_file_path = home_dir;
+                let mut config_file_path = home_dir;
                 config_file_path.push(".TrelloBST.cfg");
-                if utils::is_valid_file_path(&config_file_path) {
-                    status.success(&mut term);
-                    is_read_create_success = true;
-                } else {
-                    status.error(&mut term);
-                    is_read_create_success = false;
+                match file_path_validator(config_file_path.to_str().unwrap_or("~/.TrelloBST.cfg").to_string()) {
+                    Ok(()) => {
+                        println!("Config file location set to: {:?}", config_file_path);
+                        config_mode = Option::Some(config_file_path);
+                        valid_path_found = true;
+                    }
+                    Err(_) => {valid_path_found = false}
                 }
             }
             None           => {
-                status.error(&mut term);
-                writeln_red!(term, "Error: Failed to acquire the home directory.");
-                is_read_create_success = false;
+                writeln_red!(term, "Error: Failed to acquire the home directory path.");
+                valid_path_found = false;
             }
         }
 
-        if !is_read_create_success {
-            writeln_red!(term, "Error: Reading/Creating configuration file at default location failed. Falling back to ./.TrelloBST.cfg");
-            let status = utils::StatusPrint::from_str(&mut term, "Reading/Creating the configuration file at ./.TrelloBST.cfg");
-            config_file_path = PathBuf::from("./.TrelloBST.cfg".to_string());
-            if utils::is_valid_file_path(&config_file_path) {
-                status.success(&mut term);
-            } else {
-                status.error(&mut term);
-                writeln_red!(term, "Error: Reading/Creating configuration file at ./.TrelloBST.cfg failed.");
-                exit(-2);
+        if !valid_path_found {
+
+            let config_file_path_str = "./.TrelloBST.cfg".to_string();
+            let config_file_path = PathBuf::from(&config_file_path_str);
+
+            writeln_red!(term, "Error: Failed to read/create the configuration file in the home directory. Falling back to ./.TrelloBST.cfg");
+            match file_path_validator(config_file_path_str.clone()) {
+                Ok(()) => {
+                    config_mode = Option::Some(PathBuf::from(config_file_path));
+                    println!("Config file location set to: {}", config_file_path_str);
+                }
+                Err(_) => {
+                    config_mode = Option::None;
+                    writeln_red!(term, "Error: Failed to read/create the configuration file at ./.TrelloBST.cfg. TrelloBST will continue without saving inputted values in the configuration file.");
+                }
             }
         }
+
+    } else if matches.is_present("CONFIG") {
+        //Custom config
+        println!("Config file location set to: {}", matches.value_of("CONFIG").unwrap());
+        config_mode = Option::Some(PathBuf::from(matches.value_of("CONFIG").unwrap()));
+    } else if matches.is_present("NO_CONFIG") {
+        config_mode = Option::None;
     }
 
-    if matches.is_present("OUTPUT_DIR") {
-        output_direcrory = PathBuf::from(matches.value_of("OUTPUT_DIR").unwrap());
-        if !utils::is_valid_dir(&mut term, &output_direcrory) {
-            writeln_red!(term, "Error: Please enter a valid path for the output directory. (Including read/write permissions.)");
-            exit(-1);
-        }
-    } else {
-        output_direcrory = PathBuf::from("./");
-        if !utils::is_valid_dir(&mut term, &output_direcrory) {
-            writeln_red!(term, "Error: Current directory is invalid. (Needs read/write permissions.)");
-            exit(-1);
-        }
-    }
 
+    //Check CI config output cli options
+    if !matches.is_present("OUTPUT_DIR") && !matches.is_present("PRINT_OUTPUT") {
+
+        //Output to current directory
+        //Try current directory
+        match dir_path_validator("./".to_string()) {
+            Ok(()) => {
+                output_mode = Option::Some(PathBuf::from("./".to_string()));
+            }
+            Err(_) => {
+                writeln_red!(term, "Failed to acquire current directory, CI config will be printed in the terminal.");
+                output_mode = Option::None;
+            }
+        }
+
+    } else if matches.is_present("OUTPUT_DIR") {
+        //Output to custom directory
+        output_mode = Option::Some(PathBuf::from(matches.value_of("OUTPUT_DIR").unwrap()));
+    } else if matches.is_present("PRINT_OUTPUT") {
+        //Print the output
+        output_mode = Option::None;
+    }
 
 
     ////////////////////////////////////////////////////////////
