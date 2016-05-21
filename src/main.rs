@@ -319,7 +319,7 @@ fn main() {
                 }
                 Err(_) => {
                     config_mode = Option::None;
-                    writeln_red!(term, "Error: Failed to read/create the configuration file at ./.TrelloBST.cfg. TrelloBST will continue without saving inputted values in the configuration file.");
+                    writeln_red!(term, "Error: Failed to read/create the configuration file at ./.TrelloBST.cfg. TrelloBST will continue without saving inputted values into the configuration file.");
                 }
             }
         }

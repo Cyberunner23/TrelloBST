@@ -98,50 +98,6 @@ impl StatusPrint {
 //                       Functions                        //
 ////////////////////////////////////////////////////////////
 
-pub fn is_valid_dir(term: &mut Box<term::StdoutTerminal>, path: &PathBuf) -> bool {
-
-    match fs::metadata(&path) {
-        Ok(metadata) => {
-            if !metadata.is_dir() {
-                return false;
-            }
-        },
-        Err(_)       => {
-            writeln_red!(term, "Error: Failed to acquire directory's metadata.");
-            return false;
-        }
-    }
-
-    //Test if we can write a file to this directory
-    let mut counter = 0;
-    loop {
-        //Generate a file name.
-        let     tmp_file_name: String  = format!("ab{}ba.tmp", counter);
-        let mut tmp_file_path: PathBuf = path.clone();
-        tmp_file_path.push(tmp_file_name);
-
-        //If file does not exist, check if we can create it with r/w permissions.
-        if !tmp_file_path.exists() {
-            if is_valid_file_path(&tmp_file_path) {
-                match fs::remove_file(&tmp_file_path) {
-                    Ok(_)  => (),
-                    Err(_) => {writeln_red!(term, "Error: Failed to delete test file: {}", tmp_file_path.to_str().unwrap());}
-                }
-                break;
-            } else {return false;}
-        }
-        counter += 1;
-    }
-    return true;
-}
-
-pub fn is_valid_file_path(path: &PathBuf) -> bool {
-match OpenOptions::new().read(true).write(true).create(true).open(path.as_path()) {
-        Ok(_)  => {return true;}
-        Err(_) => {return false;}
-    }
-}
-
 #[allow(dead_code)]
 pub fn rest_api_call_get(api_call: &String) -> Result<String, &'static str> {
 
