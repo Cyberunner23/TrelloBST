@@ -206,16 +206,18 @@ impl TrelloBSTConfig {
     }
 
 
-    //Gets a config value for a key, returns "" if key doesnt exist and creates the key
-    pub fn get(&mut self, key: &str) -> String {
+    //Gets a config value for a key, returns "" if key doesnt exist and creates the key, returns () if not using config file.
+    pub fn get(&mut self, key: &str) -> Result<String, ()> {
 
         if self.config_mode.is_some() {
             if self.key_val_map.contains_key(&key.to_string()) {
-                return self.key_val_map.get(&key.to_string()).unwrap().clone();
+                return Ok(self.key_val_map.get(&key.to_string()).unwrap().clone());
             } else {
                 self.key_val_map.insert(key.to_string(), "".to_string());
-                return "".to_string();
+                return Ok("".to_string());
             }
+        } else {
+            Err(())
         }
     }
 }
