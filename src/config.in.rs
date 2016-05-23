@@ -34,7 +34,7 @@ extern crate term;
 
 use serde_json::Value;
 
-mod utils;
+use utils;
 
 
 ////////////////////////////////////////////////////////////
@@ -73,6 +73,13 @@ pub struct TrelloBSTAPIConfig {
 ////////////////////////////////////////////////////////////
 
 impl TrelloBSTConfig {
+
+    pub fn new() -> TrelloBSTConfig {
+        TrelloBSTConfig {
+            key_val_map: BTreeMap::new(),
+            config_mode: Option::None
+        }
+    }
 
     pub fn load(&mut self, config_mode: Option<PathBuf>) -> Result<(), &'static str> {
 
@@ -200,29 +207,25 @@ impl TrelloBSTConfig {
 
     //Sets a config key-value pair
     pub fn set(&mut self, key: &str, val: &str) {
-        if self.config_mode.is_some() {
-            self.key_val_map.insert(key.to_string(), val.to_string());
-        }
+        self.key_val_map.insert(key.to_string(), val.to_string());
     }
 
 
-    //Gets a config value for a key, returns "" if key doesnt exist and creates the key, returns () if not using config file.
-    pub fn get(&mut self, key: &str) -> Result<String, ()> {
-
-        if self.config_mode.is_some() {
-            if self.key_val_map.contains_key(&key.to_string()) {
-                return Ok(self.key_val_map.get(&key.to_string()).unwrap().clone());
-            } else {
-                self.key_val_map.insert(key.to_string(), "".to_string());
-                return Ok("".to_string());
-            }
+    //Gets a config value for a key, returns "" if key doesnt exist and creates the key
+    pub fn get(&mut self, key: &str) -> String {
+        if self.key_val_map.contains_key(&key.to_string()) {
+            return self.key_val_map.get(&key.to_string()).unwrap().clone();
         } else {
-            Err(())
+            self.key_val_map.insert(key.to_string(), String::new());
+            return String::new();
         }
     }
 }
 
 
+
+
+//Deprecated...
 impl TrelloBSTAPIConfig {
 
     pub fn new() -> TrelloBSTAPIConfig {

@@ -26,8 +26,9 @@
 use std::collections::BTreeMap;
 use std::fs;
 use std::fs::OpenOptions;
-use std::io::Read;
+use std::io::{self, Read, Write};
 use std::path::PathBuf;
+use std::process::exit;
 
 extern crate hyper;
 use hyper::Client;
@@ -49,6 +50,7 @@ include!("utils_macros.rs");
 //                     Structs & Impl                     //
 ////////////////////////////////////////////////////////////
 
+//Status printing
 pub struct StatusPrint {
     status_string: String
 }
@@ -92,6 +94,74 @@ impl StatusPrint {
     }
 }
 
+
+//Menu builder
+pub struct MenuBuilderItem<T> {
+    entry_name: String,
+    object:     T
+}
+
+pub struct MenuBuilder<T> {
+    menu_items:        BTreeMap<usize, MenuBuilderItem<T>>,
+    menu_item_counter: usize,
+    display_msg:       String
+}
+
+impl<T> MenuBuilder<T> {
+
+    pub fn new(display_message: String) -> MenuBuilder<T> {
+        return MenuBuilder {
+            menu_items:        BTreeMap::new(),
+            menu_item_counter: 0,
+            display_msg:       display_message
+        } as MenuBuilder<T>;
+    }
+
+    pub fn add_entry(&mut self, name: String, entry_object: T) {
+        let menu_item = MenuBuilderItem {
+            entry_name: name,
+            object: entry_object
+        };
+        self.menu_item_counter += 1;
+        self.menu_items.insert(self.menu_item_counter, menu_item);
+    }
+
+    pub fn select(&mut self, term: &mut Box<term::StdoutTerminal>) -> &mut T {
+
+        //Print options
+        println!("{}\n", self.display_msg);
+        for (entry_number, object) in self.menu_items.iter_mut() {
+            println!("[{}]: {}", entry_number, object.entry_name);
+        }
+        writeln_red!(term, "[0]: Quit");
+
+        //Get input.
+        let mut option: usize = 0;
+        loop {
+            get_input_usize!(term, &mut option, "Please enter an option: ");
+            if option <= self.menu_items.len(){
+                break;
+            }else {
+                writeln_red!(term, "Please enter a valid option.");
+            }
+        }
+
+        //Return object according to input
+        if option == 0 {
+            exit(0);
+        } else {
+             match self.menu_items.get_mut(&option) {
+                 Some(obj) => {
+                     return &mut obj.object;
+                 }
+                 //Panick on None (something baaaaad happened if we get his)
+                 None      => {
+                     panic!("Menu entry missing, this is a bug...");
+                 }
+             }
+        }
+    }
+}
 
 
 ////////////////////////////////////////////////////////////

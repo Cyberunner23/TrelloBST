@@ -149,20 +149,28 @@ impl BoardsLabelsResponse {
 //                       Functions                        //
 ////////////////////////////////////////////////////////////
 
-pub fn setup_api(term: &mut Box<term::StdoutTerminal>, config: &mut config::TrelloBSTAPIConfig) {
-    if config.trello_app_token.is_empty(){
+
+pub fn setup_api_token(term: &mut Box<term::StdoutTerminal>, trello_api_key: &str, config: &mut config::TrelloBSTConfig) {
+
+    let trello_app_token_config_key = "trello_app_token";
+    let trello_app_token            = config.get(&trello_app_token_config_key);
+
+    //If its empty then either were not loading a config from file or its first time use.
+    if trello_app_token.is_empty() {
+        let mut app_token = String::new();
         println!("Setting up Trello API Token...");
-        get_input_string!(term, &mut config.trello_app_token, "Log in to Trello.com and enter the app token from https://trello.com/1/authorize?response_type=token&key=0e190833c4db5fd7d3b0b26ae642d6fa&scope=read%2Cwrite&expiration=never&name=TrelloBST : ");
+        get_input_string!(term, &mut app_token, "Log in to Trello.com and enter the app token from https://trello.com/1/authorize?response_type=token&key={}&scope=read%2Cwrite&expiration=never&name=TrelloBST : ", trello_api_key);
+        config.set(&trello_app_token_config_key, &app_token);
     }
 }
 
 
-pub fn setup_board(term: &mut Box<term::StdoutTerminal>, config: &mut config::TrelloBSTAPIConfig, board_info: &mut TrelloBoardInfo) -> bool{
+pub fn setup_board(term: &mut Box<term::StdoutTerminal>, trello_api_key: &str, config: &mut config::TrelloBSTConfig, board_info: &mut TrelloBoardInfo) -> bool{
 
     //Aquire board list
     let mut board_list = MembersMeBoardsResponse::new();
     let     status     = utils::StatusPrint::from_str(term, "Acquiring board list from Trello.");
-    match acquire_board_list(&config, &mut board_list) {
+    match acquire_board_list(&trello_api_key, config, &mut board_list) {
         Ok(_)    => {
             status.success(term);
         },
@@ -173,14 +181,14 @@ pub fn setup_board(term: &mut Box<term::StdoutTerminal>, config: &mut config::Tr
     }
 
     //Board selection.
-    board_selection(term, config, &mut board_list, board_info)
+    board_selection(term, &trello_api_key, config, &mut board_list, board_info)
 }
 
 #[allow(unused_assignments)]
-pub fn acquire_board_list(config: &config::TrelloBSTAPIConfig, board_list: &mut MembersMeBoardsResponse) -> Result<(), &'static str>{
-
-    let     api_call      = format!("https://api.trello.com/1/members/me?fields=&boards=open&board_fields=name&key={}&token={}", config::TRELLO_API_KEY, config.trello_app_token);
-    let mut response_body = String::new();
+pub fn acquire_board_list(trello_api_key: &str, config: &mut config::TrelloBSTConfig, board_list: &mut MembersMeBoardsResponse) -> Result<(), &'static str>{
+    let     trello_app_token_config_key = "trello_app_token";
+    let     api_call                    = format!("https://api.trello.com/1/members/me?fields=&boards=open&board_fields=name&key={}&token={}", trello_api_key, config.get(trello_app_token_config_key));
+    let mut response_body               = String::new();
 
     match utils::rest_api_call_get(&api_call) {
         Ok(_response_body) => response_body = _response_body,
@@ -199,59 +207,49 @@ pub fn acquire_board_list(config: &config::TrelloBSTAPIConfig, board_list: &mut 
     Ok(())
 }
 
-pub fn board_selection(term: &mut Box<term::StdoutTerminal>, config: &mut config::TrelloBSTAPIConfig, board_list: &mut MembersMeBoardsResponse, board_info: &mut TrelloBoardInfo) -> bool {
+pub fn board_selection(term: &mut Box<term::StdoutTerminal>, trello_api_key: &str, config: &mut config::TrelloBSTConfig, board_list: &mut MembersMeBoardsResponse, board_info: &mut TrelloBoardInfo) -> bool {
 
-    println!("Which board do you want to setup?");
-    let mut counter = 1;
+    let mut board_select: utils::MenuBuilder<u64> = utils::MenuBuilder::new("Which board do you want to setup?".to_string());
+    let mut counter:      u64                     = 1;
     for i in 0..board_list.boards.len() {
-        println!("[{}] {}", i + 1, board_list.boards[i].name);
+        board_select.add_entry(board_list.boards[i].name.clone(), i as u64 + 1);
         counter += 1;
     }
-    writeln_green!(term, "[{}] Create a new board.", counter);
-    writeln_red!(term, "[0] Quit.");
 
-    let mut option: usize = 0;
-    loop {
-
-        get_input_usize!(term, &mut option, "Please enter an option: ");
-
-        if option <= counter {
-            break;
-        }else {
-            writeln_red!(term, "Please enter a valid option.");
-        }
-    }
+    let create_board_string = format!("[{}] Create a new board.", counter);
+    board_select.add_entry(create_board_string, counter);
 
     let mut is_board_created = false;
-    if option == counter {
-        match create_board(term, &config, board_info){
+    let     board_selected   = board_select.select(term);
+    if *board_selected == counter {
+        match create_board(term, &trello_api_key, config, board_info){
             Ok(_)    => is_board_created = true,
             Err(err) => {
                 panic!(format!("An error occured: {}", err));
             }
         }
-    } else if option == 0 {
-        exit(0)
     } else {
-        board_info.board_id = board_list.boards[option - 1].id.clone();
+        let index = (*board_selected - 1) as usize;
+        board_info.board_id = board_list.boards[index].id.clone();
     }
 
     return is_board_created;
 }
 
 #[allow(unused_assignments)]
-pub fn create_board(term: &mut Box<term::StdoutTerminal>, config: &config::TrelloBSTAPIConfig, board_info: &mut TrelloBoardInfo) -> Result<(), &'static str> {
+pub fn create_board(term: &mut Box<term::StdoutTerminal>, trello_api_key: &str, config: &mut config::TrelloBSTConfig, board_info: &mut TrelloBoardInfo) -> Result<(), &'static str> {
 
     //Create board
-    let mut board_name             = String::new();
-    let mut is_input_success: bool = false;
+    let     trello_app_token_config_key = "trello_app_token";
+    let mut board_name                  = String::new();
+    let mut is_input_success: bool      = false;
     loop {
         get_input_string_success!(term, &mut board_name, &mut is_input_success, "Please enter a name for the new board: ");
         if is_input_success {break;}
     }
 
     let     status = utils::StatusPrint::from_str(term, "Creating the board.");
-    let     api_call      = format!("https://trello.com/1/boards?name={}&defaultLists=false&key={}&token={}", board_name, config::TRELLO_API_KEY, config.trello_app_token);
+    let     api_call      = format!("https://trello.com/1/boards?name={}&defaultLists=false&key={}&token={}", board_name, trello_api_key, config.get(trello_app_token_config_key));
     let mut response_body = String::new();
 
     match utils::rest_api_call_post(&api_call) {

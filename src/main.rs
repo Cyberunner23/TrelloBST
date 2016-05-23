@@ -43,6 +43,7 @@ extern crate serde_json;
 extern crate term;
 
 mod appveyor;
+mod ci;
 mod config;
 mod travis_ci;
 mod trello;
@@ -140,7 +141,7 @@ fn main() {
 
     let     trellobst_version = "2.0.0-dev";
     //NOTE: Public developer key
-    let     trellobst_api_key = "0e190833c4db5fd7d3b0b26ae642d6fa";
+    let     trello_api_key = "0e190833c4db5fd7d3b0b26ae642d6fa";
     let mut term              = term::stdout().unwrap();
 
     writeln_green!(term, "╔══════════════════════════════════════════════════════════╗");
@@ -263,7 +264,7 @@ fn main() {
         }
 
         //Push card to Trello
-        match push::push(trellobst_api_key.to_string(), push_matches.is_present("BUILD_PASS"), push_config) {
+        match push::push(trello_api_key.to_string(), push_matches.is_present("BUILD_PASS"), push_config) {
             Ok(()) => {
                 status.success(&mut term);
                 exit(0);
@@ -278,8 +279,8 @@ fn main() {
 
 
     //If push subcommand not used i.e. generate a CI config
-    let mut config_mode: Option<PathBuf>;
-    let mut output_mode: Option<PathBuf>;
+    let mut config_mode: Option<PathBuf> = Option::None;
+    let mut output_mode: Option<PathBuf> = Option::None;
 
     //Check config file cli options
     if !matches.is_present("CONFIG") && !matches.is_present("NO_CONFIG") {
@@ -357,134 +358,158 @@ fn main() {
     }
 
 
-    ////////////////////////////////////////////////////////////
-    //                     Parse config                       //
-    ////////////////////////////////////////////////////////////
+    //Load Config
+    let mut status     = utils::StatusPrint::from_str(&mut term, "Parsing the configuration file...");
+    let mut config = config::TrelloBSTConfig::new();
 
-    let mut config = config::TrelloBSTAPIConfig::new();
-
-    if config_file_path != PathBuf::new() {
-        let status = utils::StatusPrint::from_str(&mut term, "Parsing the configuration file.");
-        match config::TrelloBSTAPIConfig::from_file(&config_file_path) {
-            Ok(_config) => {
-                config = _config;
-                status.success(&mut term);
-            }
-            Err(err)    => {
-                status.error(&mut term);
-                writeln_red!(term, "An error occurred: {}", err);
-                writeln_red!(term, "Configuration file won't be used...");
-                config_file_path = PathBuf::new()
-            }
+    match config.load(config_mode) {
+        Ok(()) => {status.success(&mut term);},
+        Err(err) => {
+            status.error(&mut term);
+            writeln_red!(term, "{}", err);
         }
     }
 
 
-    ////////////////////////////////////////////////////////////
-    //                   Setup Trello API                     //
-    ////////////////////////////////////////////////////////////
+    //TODO: setup trello values (api token, card title,
+    // card description, list id, build pass label id, build fail label id)
+    trello::setup_api_token(&mut term, &trello_api_key, &mut config);
 
-    trello::setup_api(&mut term, &mut config);
+    let mut board_info      = trello::TrelloBoardInfo::new();
+    let    is_board_created = trello::setup_board(&mut term, &trello_api_key, &mut config, &mut board_info);
 
-    if config_file_path != PathBuf::new() {
-        match config::TrelloBSTAPIConfig::save_config(&config_file_path, &config) {
-            Ok(_)    => (),
-            Err(err) => {
-                writeln_red!(term, "Error: {}", err);
-                writeln_red!(term, "Configuration file won't be used...");
-                config_file_path = PathBuf::new()
-            }
+
+
+    //Save config
+    status = utils::StatusPrint::from_str(&mut term, "Saving configuration file...");
+    match config.save() {
+        Ok(())   => {status.success(&mut term);},
+        Err(err) => {
+            status.error(&mut term);
+            writeln_red!(term, "Error: Failed to save the configuration file: {}, TrelloBST will continue without saving inputted values into the configuration file.", err);
         }
     }
 
+    //create CI config
+    loop {
 
+        //CIs
+
+        let mut ci_manager = ci::CI::new();
+        //ci_manager.register_ci(); //NOTE: travis-ci
+        //ci_manager.register_ci(); //NOTE: appveyor
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    //TODO: move to new config sys
+    let mut config_old = config::TrelloBSTAPIConfig::new();
+
+
+    //NOTE: NEEDS OVERHAUL
     ////////////////////////////////////////////////////////////
     //                  Setup Trello Board                    //
     ////////////////////////////////////////////////////////////
 
-    let mut board_info = trello::TrelloBoardInfo::new();
+    //let mut board_info   = trello::TrelloBoardInfo::new();
+    //let is_board_created = trello::setup_board(&mut term,  &mut config_old, &mut board_info);
+                           trello::setup_list(&mut term,   &mut config_old, &mut board_info, &is_board_created);
+                           trello::setup_labels(&mut term, &mut config_old, &mut board_info, &is_board_created);
 
-    let is_board_created = trello::setup_board(&mut term,  &mut config, &mut board_info);
-                           trello::setup_list(&mut term,   &mut config, &mut board_info, &is_board_created);
-                           trello::setup_labels(&mut term, &mut config, &mut board_info, &is_board_created);
-
+    //NOTE: DEPRECATED
     ////////////////////////////////////////////////////////////
     //               Setup Travis-CI/Appveyor                 //
     ////////////////////////////////////////////////////////////
 
-    loop {
-
-        //Print options
-        println!("For which continuous integration service do you want a configuration file for?");
-        println!("[1] Travis-CI");
-        println!("[2] AppVeyor");
-        writeln_red!(term, "[0] Quit.");
-
-        let mut option: usize = 0;
-        loop {
-            get_input_usize!(term, &mut option, "Please enter an option: ");
-            if option <= 3 {
-                break;
-            }else {
-                writeln_red!(term, "Please enter a valid option.");
-            }
-        }
-
-        match option {
-            1 => {
-
-                //Get access token / API key
-                match travis_ci::setup_api(&mut term, &mut config_file_path, &mut config) {
-                    Ok(_)    => (),
-                    Err(err) => {
-                        writeln_red!(term, "Error setting up the travis-CI API token: {}", err);
-                    }
-                }
-
-                //Save access token.
-                if config_file_path != PathBuf::new() {
-                    match config::TrelloBSTAPIConfig::save_config(&config_file_path, &config) {
-                        Ok(_)    => (),
-                        Err(err) => {
-                            writeln_red!(term, "Error: {}", err);
-                            writeln_red!(term, "Configuration file won't be used...");
-                            config_file_path = PathBuf::new();
-                        }
-                    }
-                }
-
-                match travis_ci::create_travis_yml(&mut term, &config, &mut board_info, &output_direcrory) {
-                    Ok(())   => (),
-                    Err(err) => {
-                        writeln_red!(term, "Error {}", err);
-                    }
-                }
-            },
-            2 => {
-
-                //Get access token / API key
-                appveyor::setup_api(&mut term, &mut config);
-
-                //Save access token.
-                if config_file_path != PathBuf::new() {
-                    match config::TrelloBSTAPIConfig::save_config(&config_file_path, &config) {
-                        Ok(_)    => (),
-                        Err(err) => {
-                            writeln_red!(term, "Error: {}", err);
-                            writeln_red!(term, "Configuration file won't be used...");
-                            config_file_path = PathBuf::new();
-                        }
-                    }
-                }
-
-                //Create appveyor.yml
-                match appveyor::create_appveyor_yml(&mut term, &config, &mut board_info, &output_direcrory) {
-                    Ok(()) => (),
-                    Err(err) => {writeln_red!(term, "Error {}", err);}
-                }
-            },
-            0 => exit(0),
-            _ => {panic!("An invalid option slipped through...");}
-        }
-    }
+//    loop {
+//
+//        //Print options
+//        println!("For which continuous integration service do you want a configuration file for?");
+//        println!("[1] Travis-CI");
+//        println!("[2] AppVeyor");
+//        writeln_red!(term, "[0] Quit.");
+//
+//        let mut option: usize = 0;
+//        loop {
+//            get_input_usize!(term, &mut option, "Please enter an option: ");
+//            if option <= 3 {
+//                break;
+//            }else {
+//                writeln_red!(term, "Please enter a valid option.");
+//            }
+//        }
+//
+//        match option {
+//            1 => {
+//
+//                //Get access token / API key
+//                match travis_ci::setup_api(&mut term, &mut config_file_path, &mut config) {
+//                    Ok(_)    => (),
+//                    Err(err) => {
+//                        writeln_red!(term, "Error setting up the travis-CI API token: {}", err);
+//                    }
+//                }
+//
+//                //Save access token.
+//                if config_file_path != PathBuf::new() {
+//                    match config::TrelloBSTAPIConfig::save_config(&config_file_path, &config) {
+//                        Ok(_)    => (),
+//                        Err(err) => {
+//                            writeln_red!(term, "Error: {}", err);
+//                            writeln_red!(term, "Configuration file won't be used...");
+//                            config_file_path = PathBuf::new();
+//                        }
+//                    }
+//                }
+//
+//                match travis_ci::create_travis_yml(&mut term, &config, &mut board_info, &output_direcrory) {
+//                    Ok(())   => (),
+//                    Err(err) => {
+//                        writeln_red!(term, "Error {}", err);
+//                    }
+//                }
+//            },
+//            2 => {
+//
+//                //Get access token / API key
+//                appveyor::setup_api(&mut term, &mut config);
+//
+//                //Save access token.
+//                if config_file_path != PathBuf::new() {
+//                    match config::TrelloBSTAPIConfig::save_config(&config_file_path, &config) {
+//                        Ok(_)    => (),
+//                        Err(err) => {
+//                            writeln_red!(term, "Error: {}", err);
+//                            writeln_red!(term, "Configuration file won't be used...");
+//                            config_file_path = PathBuf::new();
+//                        }
+//                    }
+//                }
+//
+//                //Create appveyor.yml
+//                match appveyor::create_appveyor_yml(&mut term, &config, &mut board_info, &output_direcrory) {
+//                    Ok(()) => (),
+//                    Err(err) => {writeln_red!(term, "Error {}", err);}
+//                }
+//            },
+//            0 => exit(0),
+//            _ => {panic!("An invalid option slipped through...");}
+//        }
+//    }
 }
