@@ -98,13 +98,14 @@ impl StatusPrint {
 //Menu builder
 pub struct MenuBuilderItem<T> {
     entry_name: String,
-    object:     T
+    object:     T,
+    text_color: Option<u16>
 }
 
 pub struct MenuBuilder<T> {
     menu_items:        BTreeMap<usize, MenuBuilderItem<T>>,
     menu_item_counter: usize,
-    display_msg:       String
+    display_msg:       String,
 }
 
 impl<T> MenuBuilder<T> {
@@ -120,7 +121,18 @@ impl<T> MenuBuilder<T> {
     pub fn add_entry(&mut self, name: String, entry_object: T) {
         let menu_item = MenuBuilderItem {
             entry_name: name,
-            object: entry_object
+            object:     entry_object,
+            text_color: Option::None
+        };
+        self.menu_item_counter += 1;
+        self.menu_items.insert(self.menu_item_counter, menu_item);
+    }
+
+    pub fn add_entry_color(&mut self, text_color: u16, name: String, entry_object: T) {
+        let menu_item = MenuBuilderItem {
+            entry_name: name,
+            object:     entry_object,
+            text_color: Option::Some(text_color)
         };
         self.menu_item_counter += 1;
         self.menu_items.insert(self.menu_item_counter, menu_item);
@@ -131,7 +143,18 @@ impl<T> MenuBuilder<T> {
         //Print options
         println!("{}\n", self.display_msg);
         for (entry_number, object) in self.menu_items.iter_mut() {
-            println!("[{}]: {}", entry_number, object.entry_name);
+
+            match object.text_color {
+                Some(color) => {
+                    term.fg(color);
+                    writeln!(term, "[{}]: {}", entry_number, object.entry_name);
+                    term.flush();
+                    term.reset();
+                }
+                None => {
+                    println!("[{}]: {}", entry_number, object.entry_name);
+                }
+            }
         }
         writeln_red!(term, "[0]: Quit");
 

@@ -375,10 +375,10 @@ fn main() {
     // card description, list id, build pass label id, build fail label id)
     trello::setup_api_token(&mut term, &trello_api_key, &mut config);
 
-    let mut board_info      = trello::TrelloBoardInfo::new();
-    let    is_board_created = trello::setup_board(&mut term, &trello_api_key, &mut config, &mut board_info);
-
-
+    let mut board_info       = trello::TrelloBoardInfo::new();
+    let     is_board_created = true;//trello::setup_board(&mut term,  &trello_api_key, &mut config, &mut board_info);
+                               trello::setup_list(&mut term,   &trello_api_key, &mut config, &mut board_info, &is_board_created);
+                               trello::setup_labels(&mut term, &trello_api_key, &mut config, &mut board_info, &is_board_created);
 
     //Save config
     status = utils::StatusPrint::from_str(&mut term, "Saving configuration file...");
@@ -419,7 +419,7 @@ fn main() {
 
 
     //TODO: move to new config sys
-    let mut config_old = config::TrelloBSTAPIConfig::new();
+    //let mut config_old = config::TrelloBSTAPIConfig::new();
 
 
     //NOTE: NEEDS OVERHAUL
@@ -429,8 +429,8 @@ fn main() {
 
     //let mut board_info   = trello::TrelloBoardInfo::new();
     //let is_board_created = trello::setup_board(&mut term,  &mut config_old, &mut board_info);
-                           trello::setup_list(&mut term,   &mut config_old, &mut board_info, &is_board_created);
-                           trello::setup_labels(&mut term, &mut config_old, &mut board_info, &is_board_created);
+                           //trello::setup_list(&mut term,   &mut config_old, &mut board_info, &is_board_created);
+                           //trello::setup_labels(&mut term, &mut config_old, &mut board_info, &is_board_created);
 
     //NOTE: DEPRECATED
     ////////////////////////////////////////////////////////////
