@@ -156,86 +156,86 @@ fn main() {
     let mut output_direcrory = PathBuf::new();
 
     let matches = App::new("TrelloBST")
-        .version(trellobst_version)
-        .setting(AppSettings::SubcommandsNegateReqs)
-        .subcommand(SubCommand::with_name("push")
-            .about("Pushes a build status to a trello board")
-            .arg(Arg::with_name("CARD_TITLE")
-                .short("t")
-                .long("title")
-                .help("Sets the title of the card.")
-                .takes_value(true)
-                .required(true))
-            .arg(Arg::with_name("CARD_DESC")
-                 .short("d")
-                 .long("description")
-                 .help("Sets the description of the card.")
-                 .takes_value(true)
-                 .required(false))
-            .arg(Arg::with_name("BUILD_PASS")
-                 .conflicts_with("BUILD_FAIL")
-                 .short("p")
-                 .long("pass")
-                 .help("Sets build status to passed.")
-                 .takes_value(false))
-            .arg(Arg::with_name("BUILD_FAIL")
-                 .conflicts_with("BUILD_PASS")
-                 .short("f")
-                 .long("fail")
-                 .help("Sets build status to failed.")
-                 .takes_value(false))
-            .arg(Arg::with_name("TRELLO_API_TOKEN")
-                 .short("T")
-                 .long("token")
-                 .help("Manually overrides the trello api token from the \"TRELLO_API_TOKEN\" environment variable.")
-                 .takes_value(true)
-                 .required(false))
-            .arg(Arg::with_name("TRELLO_LIST_ID")
-                 .short("L")
-                 .long("list-id")
-                 .help("Manually overrides the trello list id from the \"TRELLO_API_LIST_ID\" environment variable.")
-                 .takes_value(true)
-                 .required(false))
-            .arg(Arg::with_name("TRELLO_BUILD_PASS_ID")
-                 .short("P")
-                 .long("pass-id")
-                 .help("Manually overrides the trello build pass id from the \"TRELLO_API_BUILD_PASS_ID\" environment variable.")
-                 .takes_value(true)
-                 .required(false))
-            .arg(Arg::with_name("TRELLO_BUILD_FAIL_ID")
-                 .short("F")
-                 .long("fail-id")
-                 .help("Manually overrides the trello build fail id from the \"TRELLO_API_FAIL_PASS_ID\" environment variable.")
-                 .takes_value(true)
-                 .required(false))
-        )
-        .arg(Arg::with_name("CONFIG")
-            .conflicts_with("NO-CONFIG")
-            .short("c")
-            .long("config")
-            .help("Sets a custom TrelloBST configuration file.")
-            .validator(file_path_validator)
-            .takes_value(true))
-        .arg(Arg::with_name("NO-CONFIG")
-            .conflicts_with("CONFIG")
-            .short("n")
-            .long("no-config")
-            .help("Won't use a configuration file for TrelloBST.")
-            .takes_value(false))
-        .arg(Arg::with_name("OUTPUT_DIR")
-            .conflicts_with("PRINT_OUTPUT")
-            .short("o")
-            .long("output")
-            .help("Sets the output directory for the CI configuration file.")
-            .validator(dir_path_validator)
-            .takes_value(true))
-        .arg(Arg::with_name("PRINT_OUTPUT")
-            .conflicts_with("OUTPUT_DIR")
-            .short("p")
-            .long("print")
-            .help("Print the resulting CI config instead of putting it in a file.")
-            .takes_value(false))
-        .get_matches();
+    .version(trellobst_version)
+    .setting(AppSettings::SubcommandsNegateReqs)
+    .subcommand(SubCommand::with_name("push")
+                .about("Pushes a build status to a trello board")
+                .arg(Arg::with_name("CARD_TITLE")
+                     .short("t")
+                     .long("title")
+                     .help("Sets the title of the card.")
+                     .takes_value(true)
+                     .required(true))
+                .arg(Arg::with_name("CARD_DESC")
+                     .short("d")
+                     .long("description")
+                     .help("Sets the description of the card.")
+                     .takes_value(true)
+                     .required(false))
+                .arg(Arg::with_name("BUILD_PASS")
+                     .conflicts_with("BUILD_FAIL")
+                     .short("p")
+                     .long("pass")
+                     .help("Sets build status to passed.")
+                     .takes_value(false))
+                .arg(Arg::with_name("BUILD_FAIL")
+                     .conflicts_with("BUILD_PASS")
+                     .short("f")
+                     .long("fail")
+                     .help("Sets build status to failed.")
+                     .takes_value(false))
+                .arg(Arg::with_name("TRELLO_API_TOKEN")
+                     .short("T")
+                     .long("token")
+                     .help("Manually overrides the trello api token from the \"TRELLO_API_TOKEN\" environment variable.")
+                     .takes_value(true)
+                     .required(false))
+                .arg(Arg::with_name("TRELLO_LIST_ID")
+                     .short("L")
+                     .long("list-id")
+                     .help("Manually overrides the trello list id from the \"TRELLO_API_LIST_ID\" environment variable.")
+                     .takes_value(true)
+                     .required(false))
+                .arg(Arg::with_name("TRELLO_BUILD_PASS_ID")
+                     .short("P")
+                     .long("pass-id")
+                     .help("Manually overrides the trello build pass id from the \"TRELLO_API_BUILD_PASS_ID\" environment variable.")
+                     .takes_value(true)
+                     .required(false))
+                .arg(Arg::with_name("TRELLO_BUILD_FAIL_ID")
+                     .short("F")
+                     .long("fail-id")
+                     .help("Manually overrides the trello build fail id from the \"TRELLO_API_FAIL_PASS_ID\" environment variable.")
+                     .takes_value(true)
+                     .required(false))
+    )
+    .arg(Arg::with_name("CONFIG")
+         .conflicts_with("NO-CONFIG")
+         .short("c")
+         .long("config")
+         .help("Sets a custom TrelloBST configuration file.")
+         .validator(file_path_validator)
+         .takes_value(true))
+    .arg(Arg::with_name("NO-CONFIG")
+         .conflicts_with("CONFIG")
+         .short("n")
+         .long("no-config")
+         .help("Won't use a configuration file for TrelloBST.")
+         .takes_value(false))
+    .arg(Arg::with_name("OUTPUT_DIR")
+         .conflicts_with("PRINT_OUTPUT")
+         .short("o")
+         .long("output")
+         .help("Sets the output directory for the CI configuration file.")
+         .validator(dir_path_validator)
+         .takes_value(true))
+    .arg(Arg::with_name("PRINT_OUTPUT")
+         .conflicts_with("OUTPUT_DIR")
+         .short("p")
+         .long("print")
+         .help("Print the resulting CI config instead of putting it in a file.")
+         .takes_value(false))
+    .get_matches();
 
 
     if let Some(push_matches) = matches.subcommand_matches("push") {
@@ -370,15 +370,27 @@ fn main() {
         }
     }
 
+    //Setup Trello API values
+    let mut trello: trello::Trello = trello::Trello::new();
+    trello.setup_api_token(&mut term, &trello_api_key, &mut config);
 
-    //TODO: setup trello values (api token, card title,
-    // card description, list id, build pass label id, build fail label id)
-    trello::setup_api_token(&mut term, &trello_api_key, &mut config);
+    //  Select/Create the board (get an id)
+    match trello.setup_board(&mut term, &trello_api_key, &mut config) {
+        Ok(())   => (),
+        Err(err) => {panic!("A fatal error occured while settting up the trello board: {}", err);}
+    }
 
-    let mut board_info       = trello::TrelloBoardInfo::new();
-    let     is_board_created = true;//trello::setup_board(&mut term,  &trello_api_key, &mut config, &mut board_info);
-                               trello::setup_list(&mut term,   &trello_api_key, &mut config, &mut board_info, &is_board_created);
-                               trello::setup_labels(&mut term, &trello_api_key, &mut config, &mut board_info, &is_board_created);
+    //  Select/Create the list (get an id)
+    match trello.setup_list(&mut term, &trello_api_key, &mut config) {
+        Ok(())   => (),
+        Err(err) => {panic!("A fatal error occured while settting up the trello board: {}", err);}
+    }
+
+    //  Select/Create the labels (get an id)
+    match trello.setup_labels(&mut term, &trello_api_key, &mut config) {
+        Ok(())   => (),
+        Err(err) => {panic!("A fatal error occured while settting up the trello board: {}", err);}
+    }
 
     //Save config
     status = utils::StatusPrint::from_str(&mut term, "Saving configuration file...");
@@ -390,126 +402,28 @@ fn main() {
         }
     }
 
+
+    //TODO: Finish this section
     //create CI config
     loop {
 
         //CIs
-
         let mut ci_manager = ci::CI::new();
         //ci_manager.register_ci(); //NOTE: travis-ci
         //ci_manager.register_ci(); //NOTE: appveyor
+
+        //Generate CI file
+
     }
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    //TODO: move to new config sys
-    //let mut config_old = config::TrelloBSTAPIConfig::new();
-
-
-    //NOTE: NEEDS OVERHAUL
-    ////////////////////////////////////////////////////////////
-    //                  Setup Trello Board                    //
-    ////////////////////////////////////////////////////////////
-
-    //let mut board_info   = trello::TrelloBoardInfo::new();
-    //let is_board_created = trello::setup_board(&mut term,  &mut config_old, &mut board_info);
-                           //trello::setup_list(&mut term,   &mut config_old, &mut board_info, &is_board_created);
-                           //trello::setup_labels(&mut term, &mut config_old, &mut board_info, &is_board_created);
-
-    //NOTE: DEPRECATED
-    ////////////////////////////////////////////////////////////
-    //               Setup Travis-CI/Appveyor                 //
-    ////////////////////////////////////////////////////////////
-
-//    loop {
-//
-//        //Print options
-//        println!("For which continuous integration service do you want a configuration file for?");
-//        println!("[1] Travis-CI");
-//        println!("[2] AppVeyor");
-//        writeln_red!(term, "[0] Quit.");
-//
-//        let mut option: usize = 0;
-//        loop {
-//            get_input_usize!(term, &mut option, "Please enter an option: ");
-//            if option <= 3 {
-//                break;
-//            }else {
-//                writeln_red!(term, "Please enter a valid option.");
-//            }
-//        }
-//
-//        match option {
-//            1 => {
-//
-//                //Get access token / API key
-//                match travis_ci::setup_api(&mut term, &mut config_file_path, &mut config) {
-//                    Ok(_)    => (),
-//                    Err(err) => {
-//                        writeln_red!(term, "Error setting up the travis-CI API token: {}", err);
-//                    }
-//                }
-//
-//                //Save access token.
-//                if config_file_path != PathBuf::new() {
-//                    match config::TrelloBSTAPIConfig::save_config(&config_file_path, &config) {
-//                        Ok(_)    => (),
-//                        Err(err) => {
-//                            writeln_red!(term, "Error: {}", err);
-//                            writeln_red!(term, "Configuration file won't be used...");
-//                            config_file_path = PathBuf::new();
-//                        }
-//                    }
-//                }
-//
-//                match travis_ci::create_travis_yml(&mut term, &config, &mut board_info, &output_direcrory) {
-//                    Ok(())   => (),
-//                    Err(err) => {
-//                        writeln_red!(term, "Error {}", err);
-//                    }
-//                }
-//            },
-//            2 => {
-//
-//                //Get access token / API key
-//                appveyor::setup_api(&mut term, &mut config);
-//
-//                //Save access token.
-//                if config_file_path != PathBuf::new() {
-//                    match config::TrelloBSTAPIConfig::save_config(&config_file_path, &config) {
-//                        Ok(_)    => (),
-//                        Err(err) => {
-//                            writeln_red!(term, "Error: {}", err);
-//                            writeln_red!(term, "Configuration file won't be used...");
-//                            config_file_path = PathBuf::new();
-//                        }
-//                    }
-//                }
-//
-//                //Create appveyor.yml
-//                match appveyor::create_appveyor_yml(&mut term, &config, &mut board_info, &output_direcrory) {
-//                    Ok(()) => (),
-//                    Err(err) => {writeln_red!(term, "Error {}", err);}
-//                }
-//            },
-//            0 => exit(0),
-//            _ => {panic!("An invalid option slipped through...");}
-//        }
-//    }
 }
+
+
+
+
+
+
+
+
+

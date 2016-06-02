@@ -41,7 +41,7 @@ use utils;
 
 //NOTE: Trait objects derived from this trait must derive from clone (#[derive(Clone)])
 pub trait CITrait {
-    fn get_name(&mut self, ) -> String;
+    fn get_name(&mut self) -> String;
     fn setup(&mut self, term: &mut Box<term::StdoutTerminal>, config: &mut config::TrelloBSTConfig) -> Result<(), &'static str>;
     fn generate_ci_config(&mut self, config: &mut config::TrelloBSTConfig) -> Result<String, &'static str>;
 }
