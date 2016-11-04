@@ -359,7 +359,7 @@ fn main() {
 
 
     //Load Config
-    let mut status     = utils::StatusPrint::from_str(&mut term, "Parsing the configuration file...");
+    let mut status = utils::StatusPrint::from_str(&mut term, "Parsing the configuration file...");
     let mut config = config::TrelloBSTConfig::new();
 
     match config.load(config_mode) {
@@ -412,14 +412,24 @@ fn main() {
         //ci_manager.register_ci(); //NOTE: travis-ci
         //ci_manager.register_ci(); //NOTE: appveyor
 
+        //Save config
+        status = utils::StatusPrint::from_str(&mut term, "Saving configuration file...");
+        match config.save() {
+            Ok(())   => {status.success(&mut term);},
+            Err(err) => {
+                status.error(&mut term);
+                writeln_red!(term, "Error: Failed to save the configuration file: {}, TrelloBST will continue without saving inputted values into the configuration file.", err);
+            }
+        }
+
+
+
         //Generate CI file
 
     }
 
 
 }
-
-
 
 
 

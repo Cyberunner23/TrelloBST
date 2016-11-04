@@ -70,7 +70,6 @@ pub struct TravisEncryptedVars {
     pub build_fail_id:    String
 }
 
-#[allow(dead_code)]
 #[derive(Deserialize)]
 pub struct RepoResponse {
     key:  String,
