@@ -116,148 +116,49 @@ impl ParsedHooksResponse {
         let mut tmp_parsed_hooks_response = ParsedHooksResponse::new();
 
         //Parse
-        let data: Value;
-        match serde_json::from_str(&json_data){
-            Ok(_data) => data = _data,
-            Err(_)  => {
-                return Err("Error parsing the JSON data")
-            }
-        }
+        let data: Value = match serde_json::from_str(&json_data){
+            Ok(data) => data,
+            Err(_)   => {return Err("Error parsing the JSON data");}
+        };
 
         //Get JSON object
-        let object: BTreeMap<String, Value>;
-        match data.as_object().ok_or("Error: JSON data does not describe an object.") {
-            Ok(_object) => {
-                object  = _object.clone();
-            },
-            Err(err)    => {
-                return Err(err);
-            }
-        }
+        let object = try!(data.as_object().ok_or("Error: JSON data does not describe an object."));
 
         //Get "hooks" field
-        let hooks_value: Value;
-        match object.get("hooks").ok_or("Error: The \"hooks\" field has not been found in the JSON data.") {
-            Ok(_hooks_value) => {
-                hooks_value  = _hooks_value.clone();
-            }
-            Err(err)        => {
-                return Err(err)
-            }
-        }
+        let hooks_value = try!(object.get("hooks").ok_or("Error: The \"hooks\" field has not been found in the JSON data."));
 
         //Get "hooks" content
-        let hooks_array: Vec<Value>;
-        match hooks_value.as_array().ok_or("Error: The \"hooks\" field does not describe an array.") {
-            Ok(_hooks_array) => {
-                hooks_array  = _hooks_array.clone();
-            }
-            Err(err)        => {
-                return Err(err)
-            }
-        }
+        let hooks_array: Vec<Value> = match hooks_value.as_array().ok_or("Error: The \"hooks\" field does not describe an array.") {
+            Ok(hooks_array) => hooks_array.clone(),
+            Err(err)        => {return Err(err);}
+        };
 
         //For each hook
         for hook in &hooks_array {
 
             //Get hook object
-            let mut hook_object: BTreeMap<String, Value>;
-            hook_object = BTreeMap::new();
-            match hook.as_object().ok_or("Error: An entry in the \"hook\" field does not describe an object.") {
-                Ok(_hook_object) => {
-                    hook_object  = _hook_object.clone();
-                },
-                Err(err)    => {
-                    return Err(err);
-                }
-            }
+            let hook_object = try!(hook.as_object().ok_or("Error: An entry in the \"hook\" field does not describe an object.")).clone();
 
             //Get "id" value
-            let id_value: Value;
-            match hook_object.get("id").ok_or("Error: Failed to acquire the \"id\" field of a \"hook\" field.") {
-                Ok(_id_value) => {
-                    id_value  = _id_value.clone();
-                }
-                Err(err)        => {
-                    return Err(err)
-                }
-            }
-
-            let id_u64: u64;
-            match id_value.as_u64().ok_or("Error: Failed to convert the value of the \"id\" field to a u64.") {
-                Ok(_id_u64) => {
-                    id_u64  = _id_u64;
-                }
-                Err(err)        => {
-                    return Err(err)
-                }
-            }
+            let id_value = try!(hook_object.get("id").ok_or("Error: Failed to acquire the \"id\" field of a \"hook\" field.")).clone();
+            let id_u64   = try!(id_value.as_u64().ok_or("Error: Failed to convert the value of the \"id\" field to a u64."));
 
             //Get "name" field
-            let name_value: Value;
-            match hook_object.get("name").ok_or("Error: Failed to acquire the \"name\" field of a \"hook\" field.") {
-                Ok(_name_value) => {
-                    name_value  = _name_value.clone();
-                }
-                Err(err)        => {
-                    return Err(err)
-                }
-            }
-
-            let mut name_string = String::new();
-            match name_value.as_string().ok_or("Error: Failed to convert the value of the \"name\" field to a string.") {
-                Ok(_name_string) => {
-                    name_string.push_str(_name_string.clone());
-                }
-                Err(err)        => {
-                    return Err(err)
-                }
-            }
+            let name_value  = try!(hook_object.get("name").ok_or("Error: Failed to acquire the \"name\" field of a \"hook\" field.")).clone();
+            let name_string = try!(name_value.as_str().ok_or("Error: Failed to convert the value of the \"name\" field to a string.")).to_string();
 
             //Get "owner_name" field
-            let owner_name_value: Value;
-            match hook_object.get("owner_name").ok_or("Error: Failed to acquire the \"owner_name\" field of a \"hook\" field.") {
-                Ok(_owner_name_value) => {
-                    owner_name_value  = _owner_name_value.clone();
-                }
-                Err(err)        => {
-                    return Err(err)
-                }
-            }
-
-            let mut owner_name_string = String::new();
-            match owner_name_value.as_string().ok_or("Error: Failed to convert the value of the \"owner_name\" field to a string.") {
-                Ok(_owner_name_string) => {
-                    owner_name_string.push_str(_owner_name_string.clone());
-                }
-                Err(err)        => {
-                    return Err(err)
-                }
-            }
+            let owner_name_value  = try!(hook_object.get("owner_name").ok_or("Error: Failed to acquire the \"owner_name\" field of a \"hook\" field.")).clone();
+            let owner_name_string = try!(owner_name_value.as_str().ok_or("Error: Failed to convert the value of the \"owner_name\" field to a string.")).to_string();
 
             //Get "active" field and if null, assume false.
-            let active_value: Value;
-            match hook_object.get("active").ok_or("Error: Failed to acquire the \"active\" field of a \"hook\" field.") {
-                Ok(_active_value) => {
-                    active_value  = _active_value.clone();
-                }
-                Err(err)        => {
-                    return Err(err)
-                }
-            }
+            let active_value = try!(hook_object.get("active").ok_or("Error: Failed to acquire the \"active\" field of a \"hook\" field.")).clone();
 
             let active_bool: bool;
             if active_value.is_null() {
                 active_bool = false;
             } else {
-                match active_value.as_boolean().ok_or("Error: Failed to convert the value of the \"active\" field to a bool.") {
-                    Ok(_active_bool) => {
-                        active_bool  = _active_bool;
-                    }
-                    Err(err)        => {
-                        return Err(err)
-                    }
-                }
+                active_bool = try!(active_value.as_bool().ok_or("Error: Failed to convert the value of the \"active\" field to a bool."));
             }
 
             tmp_parsed_hooks_response.hooks.push(Hook{
@@ -300,7 +201,6 @@ pub fn setup_api(term: &mut Box<term::StdoutTerminal>, config_file_path: &mut Pa
 
         //Convert github token to travis api key
         let     api_call                = format!("https://api.travis-ci.org/auth/github?github_token={}", github_token);
-        let mut response_body           = String::new();
         let mut header                  = Headers::new();
         let mut content_length: Vec<u8> = Vec::new();
 
@@ -311,18 +211,15 @@ pub fn setup_api(term: &mut Box<term::StdoutTerminal>, config_file_path: &mut Pa
         header.set_raw("Content-Type",   vec![b"application/json".to_vec()]);
         header.set_raw("Content-Length", vec![content_length]);
 
-        match utils::rest_api_call_post_with_header(&api_call, header) {
-            Ok(_response_body) => response_body = _response_body,
-            Err(err)           => {
+        let response_body = match utils::rest_api_call_post_with_header(&api_call, header) {
+            Ok(response_body) => response_body,
+            Err(err)          => {
                 *config_file_path = PathBuf::new();
                 return Err(err)
             }
-        }
+        };
 
-        match utils::get_single_json_value_as_string(&response_body, "access_token") {
-            Ok(value) => config.travis_access_token = value,
-            Err(err)  => return Err(err)
-        }
+        config.travis_access_token = try!(utils::get_single_json_value_as_string(&response_body, "access_token"));
     }
     Ok(())
 }
@@ -347,8 +244,8 @@ pub fn create_travis_yml(term: &mut Box<term::StdoutTerminal>, config: &config::
 pub fn get_repo_tag_and_pub_key(term: &mut Box<term::StdoutTerminal>, config: &config::TrelloBSTAPIConfig, crypto_state: &mut PKey, repo_tag: &mut String) {
 
     //Get repos.
-    let      status = utils::StatusPrint::from_str(term, "Acquiring the repo list from Travis-CI.");
-    let mut  hooks  = ParsedHooksResponse::new();
+    let     status = utils::StatusPrint::from_str(term, "Acquiring the repo list from Travis-CI.");
+    let mut hooks  = ParsedHooksResponse::new();
     match acquire_hooks(config)  {
         Ok(_hooks) => {
             hooks = _hooks;
@@ -592,7 +489,6 @@ pub fn acquire_hooks(config: &config::TrelloBSTAPIConfig) -> Result<ParsedHooksR
 
     let     api_call      = format!("https://api.travis-ci.org/hooks");
     let     auth          = format!("token {}", config.travis_access_token);
-    let mut response_body = String::new();
     let mut header        = Headers::new();
 
     header.set_raw("User-Agent",    vec![b"Travis_TrelloBST/1.0.0".to_vec()]);
@@ -601,34 +497,7 @@ pub fn acquire_hooks(config: &config::TrelloBSTAPIConfig) -> Result<ParsedHooksR
     header.set_raw("Host",          vec![b"api.travis-ci.org".to_vec()]);
     header.set_raw("Content-Type",  vec![b"application/json".to_vec()]);
 
-    match utils::rest_api_call_get_with_header(&api_call, header) {
-        Ok(_response_body) => response_body = _response_body,
-        Err(err)           => return Err(err)
-    }
+    let response_body = try!(utils::rest_api_call_get_with_header(&api_call, header));
 
-    match ParsedHooksResponse::from_json(&response_body) {
-        Ok(hooks) => Ok(hooks),
-        Err(err)  => return Err(err)
-    }
+    Ok(try!(ParsedHooksResponse::from_json(&response_body)))
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

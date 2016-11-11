@@ -130,27 +130,25 @@ impl Trello {
         //Get list of boards
         let     status                      = utils::StatusPrint::from_str(term, "Acquiring board list from Trello.");
         let     trello_app_token_config_key = "trello_app_token";
-        let mut board_list                  = MembersMeBoardsResponse::new();
-        let mut response_body               = String::new();
         let mut api_call                    = format!("https://api.trello.com/1/members/me?fields=&boards=open&board_fields=name&key={}&token={}", trello_api_key, config.get(trello_app_token_config_key));
 
         //  Do API call
-        match utils::rest_api_call_get(&api_call) {
-            Ok(_response_body) => response_body = _response_body,
-            Err(err)           => {
+        let mut response_body = match utils::rest_api_call_get(&api_call) {
+            Ok(response_body) => response_body,
+            Err(err)          => {
                 status.error(term);
                 return Err(err);
             }
-        }
+        };
 
         //  Parse JSON data
-        match serde_json::from_str(&response_body){
-            Ok(_board_list) => board_list = _board_list,
-            Err(_)          => {
+        let mut board_list: MembersMeBoardsResponse = match serde_json::from_str(&response_body){
+            Ok(board_list) => board_list,
+            Err(_)         => {
                 status.error(term);
                 return Err("Error parsing the response.");
             }
-        }
+        };
         status.success(term);
 
 
@@ -226,18 +224,16 @@ impl Trello {
             //Acquire board list
             let     status           = utils::StatusPrint::from_str(term, "Acquiring board's lists list from Trello.");
             let     api_call         = format!("https://api.trello.com/1/boards/{}?lists=open&list_fields=name&fields=name,desc&key={}&token={}", config.get("trello_board_id"), trello_api_key, config.get(trello_app_token_config_key));
-            let mut response_body    = String::new();
-            let mut board_lists_list = BoardsResponse::new();
 
-            match utils::rest_api_call_get(&api_call) {
-                Ok(_response_body) => response_body = _response_body,
+            let mut response_body = match utils::rest_api_call_get(&api_call) {
+                Ok(response_body) => response_body,
                 Err(err)           => return Err(err)
-            }
+            };
 
-            match serde_json::from_str(&response_body){
-                Ok(_board_lists_list) => board_lists_list = _board_lists_list,
-                Err(_)                => return Err("Error parsing the response.",)
-            }
+            let mut board_lists_list: BoardsResponse = match serde_json::from_str(&response_body){
+                Ok(board_lists_list) => board_lists_list,
+                Err(_)               => return Err("Error parsing the response.",)
+            };
 
             //Select board list
             let mut board_list_select: utils::MenuBuilder<u64> = utils::MenuBuilder::new("Which board list do you want to use for the build statuses?".to_string());
@@ -273,16 +269,15 @@ impl Trello {
 
             let     trello_app_token_config_key = "trello_app_token";
             let     api_call                    = format!("https://trello.com/1/lists?name={}&idBoard={}&defaultLists=false&key={}&token={}", list_name, config.get("trello_board_id"), trello_api_key, config.get(trello_app_token_config_key));
-            let mut response_body               = String::new();
             let     status                      = utils::StatusPrint::from_str(term, "Creating the list.");
 
-            match utils::rest_api_call_post(&api_call) {
-                Ok(_response_body) => response_body = _response_body,
-                Err(err)           => {
+            let mut response_body = match utils::rest_api_call_post(&api_call) {
+                Ok(response_body) => response_body,
+                Err(err)          => {
                     status.error(term);
                     return Err(err);
                 }
-            }
+            };
 
             match utils::get_single_json_value_as_string(&response_body, "id") {
                 Ok(value) => config.set("trello_list_id", &value[..]),
@@ -307,20 +302,18 @@ impl Trello {
 
             //Acquire label list
             let     api_call         = format!("https://api.trello.com/1/boards/{}?labels=all&label_fields=name,color&fields=none&key={}&token={}", config.get("trello_board_id"), trello_api_key, config.get(trello_app_token_config_key));
-            let mut response_body    = String::new();
             let mut board_label_list = BoardsLabelsResponse::new();
             let     status           = utils::StatusPrint::from_str(term, "Acquiring board's labels from Trello.");
 
-            match utils::rest_api_call_get(&api_call) {
-                Ok(_response_body) => response_body = _response_body,
-                Err(err)           => return Err(err)
-            }
+            let mut response_body = match utils::rest_api_call_get(&api_call) {
+                Ok(response_body) => response_body,
+                Err(err)          => return Err(err)
+            };
 
-            let board_labels: BoardsLabelsResponse;
-            match BoardsLabelsResponse::from_json(&response_body) {
-                Ok(_local_board_labels_response) => board_labels = _local_board_labels_response,
-                Err(err)                         => return Err(err)
-            }
+            let board_labels: BoardsLabelsResponse = match BoardsLabelsResponse::from_json(&response_body) {
+                Ok(labels) => labels,
+                Err(err)   => return Err(err)
+            };
 
             //Select labels
             let mut label_select: utils::MenuBuilder<u64> = utils::MenuBuilder::new(String::new());
@@ -407,18 +400,17 @@ impl Trello {
         }
 
         //Create label.
-        let mut response_body               = String::new();
-        let     trello_app_token_config_key = "trello_app_token";
-        let     api_call                    = format!("https://trello.com/1/board/{}/labels?name={}&color={}&key={}&token={}", config.get("trello_board_id"), label_name, label_color, trello_api_key, config.get(trello_app_token_config_key));
-        let     status                      = utils::StatusPrint::from_str(term, "Creating the label.");
+        let trello_app_token_config_key = "trello_app_token";
+        let api_call                    = format!("https://trello.com/1/board/{}/labels?name={}&color={}&key={}&token={}", config.get("trello_board_id"), label_name, label_color, trello_api_key, config.get(trello_app_token_config_key));
+        let status                      = utils::StatusPrint::from_str(term, "Creating the label.");
 
-        match utils::rest_api_call_post(&api_call) {
-            Ok(_response_body) => response_body = _response_body,
-            Err(err)           => {
+        let mut response_body = match utils::rest_api_call_post(&api_call) {
+            Ok(response_body) => response_body,
+            Err(err)          => {
                 status.error(term);
                 return Err(err);
             }
-        }
+        };
 
         match utils::get_single_json_value_as_string(&response_body, "id") {
             Ok(value) => {config.set(&format!("trello_build_{}_id", &pass_fail_txt)[..], &value[..]);},
@@ -486,98 +478,48 @@ impl BoardsLabelsResponse {
         let mut tmp_boards_labels_response = BoardsLabelsResponse::new();
 
         //Parse
-        let data: Value;
-        match serde_json::from_str(&json_data){
-            Ok(_data) => data = _data,
-            Err(_)    => return Err("Error parsing the JSON data")
-        }
+        let data: Value = match serde_json::from_str(&json_data){
+            Ok(data) => data,
+            Err(_)   => return Err("Error parsing the JSON data")
+        };
 
         //Get JSON object
-        let object: BTreeMap<String, Value>;
-        match data.as_object().ok_or("Error: JSON data does not describe an object.") {
-            Ok(_object) => object = _object.clone(),
-            Err(err)    => return Err(err)
-        }
+        let object = try!(data.as_object().ok_or("Error: JSON data does not describe an object.")).clone();
 
         //Get "id" field
-        let id_value: Value;
-        match object.get("id").ok_or("Error: The \"id\" field has not been found in the JSON data.") {
-            Ok(_id_value) => id_value = _id_value.clone(),
-            Err(err)      => return Err(err)
-        }
+        let id_value: Value = try!(object.get("id").ok_or("Error: The \"id\" field has not been found in the JSON data.")).clone();
 
         //Get "id" value.
-        match id_value.as_string().ok_or("Error: The \"id\" field does not describe a string value.") {
-            Ok(_response_id) => tmp_boards_labels_response.id = _response_id.to_string().clone(),
-            Err(err)         => return Err(err)
-        }
+        tmp_boards_labels_response.id = try!(id_value.as_str().ok_or("Error: The \"id\" field does not describe a string value.")).to_string().clone();
 
         //Get "labels" field
-        let labels_value: Value;
-        match object.get("labels").ok_or("Error: The \"labels\" field has not been found in the JSON data.") {
-            Ok(_labels_value) => labels_value = _labels_value.clone(),
-            Err(err)          => return Err(err)
-        }
+        let labels_value: Value = try!(object.get("labels").ok_or("Error: The \"labels\" field has not been found in the JSON data.")).clone();
 
         //Get "labels" content
-        let labels_array: Vec<Value>;
-        match labels_value.as_array().ok_or("Error: The \"labels\" field does not describe an array.") {
-            Ok(_labels_array) => labels_array = _labels_array.clone(),
-            Err(err)          => return Err(err)
-        }
+        let labels_array = try!(labels_value.as_array().ok_or("Error: The \"labels\" field does not describe an array.")).clone();
 
         //For each label
         for label in &labels_array {
 
             //Get label object
-            let mut label_object: BTreeMap<String, Value>;
-            label_object = BTreeMap::new();
-            match label.as_object().ok_or("Error: An entry in the \"labels\" field does not describe an object.") {
-                Ok(_label_object) => label_object = _label_object.clone(),
-                Err(err)          => return Err(err)
-            }
+            let mut label_object = try!(label.as_object().ok_or("Error: An entry in the \"labels\" field does not describe an object.")).clone();
 
             //Get "id" field
-            let label_id_value: Value;
-            match label_object.get("id").ok_or("Error: Failed to acquire the \"id\" field in a \"labels\" field.") {
-                Ok(_label_id_value) => label_id_value = _label_id_value.clone(),
-                Err(err)          => return Err(err)
-            }
-
-            let label_id_string: String;
-            match label_id_value.as_string().ok_or("Error: Failed to convert the \"id\" field into a string.") {
-                Ok(_label_id_string) => label_id_string = _label_id_string.to_string().clone(),
-                Err(err)             => return Err(err)
-            }
+            let label_id_value: Value = try!(label_object.get("id").ok_or("Error: Failed to acquire the \"id\" field in a \"labels\" field.")).clone();
+            let label_id_string       = try!(label_id_value.as_str().ok_or("Error: Failed to convert the \"id\" field into a string.")).to_string().clone();
 
             //Get "name" field
-            let label_name_value: Value;
-            match label_object.get("name").ok_or("Error: Failed to acquire the \"name\" field in a \"labels\" field.") {
-                Ok(_label_name_value) => label_name_value = _label_name_value.clone(),
-                Err(err)              => return Err(err)
-            }
-
-            let label_name_string: String;
-            match label_name_value.as_string().ok_or("Error: Failed to convert the value of the \"name\" field to a string.") {
-                Ok(_label_name_string) => label_name_string = _label_name_string.to_string().clone(),
-                Err(err)               => return Err(err)
-            }
+            let label_name_value: Value = try!(label_object.get("name").ok_or("Error: Failed to acquire the \"name\" field in a \"labels\" field.")).clone();
+            let label_name_string       = try!(label_name_value.as_str().ok_or("Error: Failed to convert the value of the \"name\" field to a string.")).to_string().clone();
 
             //Get "color" field, if null, color is none
-            let label_color_value: Value;
-            match label_object.get("color").ok_or("Error: Failed to acquire the \"color\" field in a \"labels\" field.") {
-                Ok(_label_color_value) => label_color_value = _label_color_value.clone(),
-                Err(err)               => return Err(err)
-            }
+            let label_color_value: Value = try!(label_object.get("color").ok_or("Error: Failed to acquire the \"color\" field in a \"labels\" field.")).clone();
 
             let label_color_string: String;
             if label_color_value.is_null() {
                 label_color_string = "none".to_string();
             } else {
-                match label_color_value.as_string().ok_or("Error: Failed to convert the value of the \"color\" field to a string.") {
-                    Ok(_label_color_string) => label_color_string = _label_color_string.to_string().clone(),
-                    Err(err)                => return Err(err)
-                }
+                label_color_string = try!(label_color_value.as_str().ok_or("Error: Failed to convert the value of the \"color\" field to a string.")).to_string().clone();
             }
 
             tmp_boards_labels_response.labels.push(LabelInfo{

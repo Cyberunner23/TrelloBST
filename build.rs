@@ -27,13 +27,11 @@
 macro_rules! expand {
     ($file_in:expr, $file_out:expr) => {{
 
-        let     src      = Path::new($file_in);
-        let     out_dir  = env::var_os("OUT_DIR").unwrap();
-        let     dest     = Path::new(&out_dir).join($file_out);
-        let mut registry = syntex::Registry::new();
+        let src     = Path::new($file_in);
+        let out_dir = env::var_os("OUT_DIR").unwrap();
+        let dest    = Path::new(&out_dir).join($file_out);
 
-        serde_codegen::register(&mut registry);
-        registry.expand("", &src, &dest).unwrap();
+        serde_codegen::expand(&src, &dest).unwrap();
     }}
 }
 

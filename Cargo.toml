@@ -6,17 +6,14 @@ description = "Trello Build Status Tool, A tool for setting up a trello page rec
 build       = "build.rs"
 
 [build-dependencies]
-serde_codegen = "*"
+serde_codegen = "0.8"
 syntex        = "*"
 
 [dependencies]
-clap            = "*"
-hyper           = "*"
-openssl         = "*"
-rustc-serialize = "*"
-serde           = "*"
-serde_json      = "*"
-term            = "*"
-
-
-
+clap            = "2.18"
+hyper           = "0.9"
+openssl         = "0.7"
+rustc-serialize = "0.3"
+serde           = "0.8"
+serde_json      = "0.8"
+term            = "0.4"

@@ -66,12 +66,7 @@ pub fn file_path_validator(file_path: String) -> Result<(), String> {
     match OpenOptions::new().read(true).write(true).create(true).open(Path::new(&file_path)) {
         Ok(_)  => Ok(()),
         Err(err) => {
-            let mut err_string = "Cannot open file \"".to_string();
-            err_string.push_str(file_path.as_str());
-            err_string.push_str("\" due to an error: \"");
-            err_string.push_str(err.description());
-            err_string.push_str("\"");
-            Err(err_string)
+            return Err(format!("Cannot open file \"{}\" due to an error: \"{}\"", file_path, err.description()));
         }
     }
 }
@@ -82,17 +77,11 @@ pub fn dir_path_validator(dir_path: String) -> Result<(), String> {
     match fs::metadata(&dir_path) {
         Ok(metadata) => {
             if !metadata.is_dir() {
-                let mut err_string = "\"".to_string();
-                err_string.push_str(dir_path.as_str());
-                err_string.push_str("\" is not a directory.");
-                return Err(err_string);
+                return Err(format!("\"{}\" is not a directory.", dir_path));
             }
         },
         Err(err)     => {
-            let mut err_string = "Failed to acquire metadata for \"".to_string();
-            err_string.push_str(dir_path.as_str());
-            err_string.push_str("\", do you have permission to read/write to this directory?");
-            return Err(err_string);
+            return Err(format!("Failed to acquire metadata for \"{}\", do you have permission to read/write to this directory?", dir_path));
         }
     }
 
@@ -113,18 +102,12 @@ pub fn dir_path_validator(dir_path: String) -> Result<(), String> {
                     match fs::remove_file(&tmp_file_path_buf) {
                         Ok(_)  => return Ok(()),
                         Err(err) => {
-                            let mut err_string = "Failed to delete temporary file: \"".to_string();
-                            err_string.push_str(&tmp_file_path);
-                            err_string.push_str("\"");
-                            return Err(err_string);
+                            return Err(format!("Failed to delete temporary file: \"{}\"", tmp_file_path));
                         }
                     }
                 }
                 Err(err) => {
-                    let mut err_string = "Invalid directory: \"".to_string();
-                    err_string.push_str(err.description());
-                    err_string.push_str("\"");
-                    return Err(err_string);
+                    return Err(format!("Invalid directory: \"{}\"", err.description()));
                 }
             }
         }
@@ -248,20 +231,19 @@ fn main() {
 
         //Create config struct
         let status = utils::StatusPrint::from_str(&mut term, "Pushing card to Trello.");
-        let push_config: push::PushConfig;
-        match push::PushConfig::fill(push_matches.value_of("CARD_TITLE").unwrap().to_string(),
-                                     push_matches.value_of("CARD_DESC").unwrap_or("").to_string(),
-                                     push_matches.value_of("TRELLO_BUILD_PASS_ID").unwrap_or("").to_string(),
-                                     push_matches.value_of("TRELLO_BUILD_FAIL_ID").unwrap_or("").to_string(),
-                                     push_matches.value_of("TRELLO_LIST_ID").unwrap_or("").to_string(),
-                                     push_matches.value_of("TRELLO_API_TOKEN").unwrap_or("").to_string()) {
-            Ok(_push_config) => {push_config = _push_config;}
-            Err(err)         => {
+        let push_config = match push::PushConfig::fill(push_matches.value_of("CARD_TITLE").unwrap().to_string(),
+                                    push_matches.value_of("CARD_DESC").unwrap_or("").to_string(),
+                                    push_matches.value_of("TRELLO_BUILD_PASS_ID").unwrap_or("").to_string(),
+                                    push_matches.value_of("TRELLO_BUILD_FAIL_ID").unwrap_or("").to_string(),
+                                    push_matches.value_of("TRELLO_LIST_ID").unwrap_or("").to_string(),
+                                    push_matches.value_of("TRELLO_API_TOKEN").unwrap_or("").to_string()) {
+            Ok(config) => config,
+            Err(err)   => {
                 status.error(&mut term);
                 writeln_red!(term, "{}", err);
                 exit(-1);
             }
-        }
+        };
 
         //Push card to Trello
         match push::push(trello_api_key.to_string(), push_matches.is_present("BUILD_PASS"), push_config) {
@@ -363,7 +345,7 @@ fn main() {
     let mut config = config::TrelloBSTConfig::new();
 
     match config.load(config_mode) {
-        Ok(()) => {status.success(&mut term);},
+        Ok(())   => {status.success(&mut term);},
         Err(err) => {
             status.error(&mut term);
             writeln_red!(term, "{}", err);

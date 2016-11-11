@@ -111,11 +111,11 @@ pub struct MenuBuilder<T> {
 impl<T> MenuBuilder<T> {
 
     pub fn new(display_message: String) -> MenuBuilder<T> {
-        return MenuBuilder {
+        MenuBuilder {
             menu_items:        BTreeMap::new(),
             menu_item_counter: 0,
             display_msg:       display_message
-        } as MenuBuilder<T>;
+        } as MenuBuilder<T>
     }
 
     pub fn add_entry(&mut self, name: String, entry_object: T) {
@@ -195,19 +195,17 @@ impl<T> MenuBuilder<T> {
 pub fn rest_api_call_get(api_call: &String) -> Result<String, &'static str> {
 
     let     http_client   = Client::new();
-    let mut response:       Response;
     let mut response_body = String::new();
-    let     api_call_url:   Url;
 
-    match api_call.into_url() {
-        Ok(url) => api_call_url = url,
+    let api_call_url = match api_call.into_url() {
+        Ok(url) => url,
         Err(_)  => return Err("Error while parsing API call url.")
-    }
+    };
 
-    match http_client.get(api_call_url).send() {
-        Ok(res) => response = res,
+    let mut response = match http_client.get(api_call_url).send() {
+        Ok(res) => res,
         Err(_)  => return Err("Error calling the API.")
-    }
+    };
 
     match response.read_to_string(&mut response_body) {
         Ok(_)  => (),
@@ -229,23 +227,21 @@ pub fn rest_api_call_get(api_call: &String) -> Result<String, &'static str> {
 pub fn rest_api_call_get_with_header(api_call: &String, header: Headers) -> Result<String, &'static str> {
 
     let     http_client   = Client::new();
-    let mut response:       Response;
     let mut response_body = String::new();
-    let     api_call_url:   Url;
 
-    match api_call.into_url() {
-        Ok(url) => api_call_url = url,
+    let api_call_url = match api_call.into_url() {
+        Ok(url) => url,
         Err(_)  => return Err("Error while parsing API call url.")
-    }
+    };
 
-    match http_client.get(api_call_url)
+    let mut response = match http_client.get(api_call_url)
                      .headers(header)
                      .send() {
-        Ok(res) => response = res,
+        Ok(res) => res,
         Err(_)  => {
             return Err("Error calling the API.");
         }
-    }
+    };
 
     match response.read_to_string(&mut response_body) {
         Ok(_)  => (),
@@ -267,19 +263,17 @@ pub fn rest_api_call_get_with_header(api_call: &String, header: Headers) -> Resu
 pub fn rest_api_call_post(api_call: &String) -> Result<String, &'static str> {
 
     let     http_client   = Client::new();
-    let mut response:       Response;
     let mut response_body = String::new();
-    let     api_call_url:   Url;
 
-    match api_call.into_url() {
-        Ok(url) => api_call_url = url,
+    let api_call_url = match api_call.into_url() {
+        Ok(url) => url,
         Err(_)  => return Err("Error while parsing API call url.")
-    }
+    };
 
-    match http_client.post(api_call_url).send() {
-        Ok(res) => response = res,
+    let mut response = match http_client.post(api_call_url).send() {
+        Ok(res) => res,
         Err(_)  => return Err("Error calling the API.")
-    }
+    };
 
     match response.read_to_string(&mut response_body){
         Ok(_)  => (),
@@ -301,21 +295,19 @@ pub fn rest_api_call_post(api_call: &String) -> Result<String, &'static str> {
 pub fn rest_api_call_post_with_header(api_call: &String, header: Headers) -> Result<String, &'static str> {
 
     let     http_client   = Client::new();
-    let mut response:       Response;
     let mut response_body = String::new();
-    let     api_call_url:   Url;
 
-    match api_call.into_url() {
-        Ok(url) => api_call_url = url,
+    let api_call_url = match api_call.into_url() {
+        Ok(url) => url,
         Err(_)  => return Err("Error while parsing API call url.")
-    }
+    };
 
-    match http_client.post(api_call_url)
+    let mut response = match http_client.post(api_call_url)
             .headers(header)
             .send() {
-        Ok(res) => response = res,
+        Ok(res) => res,
         Err(_)  => return Err("Error calling the API.")
-    }
+    };
 
     match response.read_to_string(&mut response_body){
         Ok(_)  => (),
@@ -337,21 +329,19 @@ pub fn rest_api_call_post_with_header(api_call: &String, header: Headers) -> Res
 pub fn rest_api_call_put_with_header(api_call: &String, header: Headers) -> Result<String, &'static str> {
 
     let     http_client   = Client::new();
-    let mut response:       Response;
     let mut response_body = String::new();
-    let     api_call_url:   Url;
 
-    match api_call.into_url() {
-        Ok(url) => api_call_url = url,
+    let api_call_url = match api_call.into_url() {
+        Ok(url) => url,
         Err(_)  => return Err("Error while parsing API call url.")
-    }
+    };
 
-    match http_client.put(api_call_url)
+    let mut response = match http_client.put(api_call_url)
                      .headers(header)
                      .send() {
-        Ok(res) => response = res,
+        Ok(res) => res,
         Err(_)  => return Err("Error calling the API.")
-    }
+    };
 
     match response.read_to_string(&mut response_body){
         Ok(_)  => (),
@@ -372,39 +362,15 @@ pub fn rest_api_call_put_with_header(api_call: &String, header: Headers) -> Resu
 #[allow(dead_code)]
 pub fn get_single_json_value_as_string(json_string: &String, field: &str) -> Result<String, &'static str>{
 
-    let data: Value;
-    match serde_json::from_str(&json_string){
-        Ok(_data) => data = _data,
-        Err(_)  => {
-            return Err("Error parsing the JSON data")
-        }
-    }
+    let data: Value = match serde_json::from_str(&json_string){
+        Ok(data) => data,
+        Err(_)   => return Err("Error parsing the JSON data")
+    };
 
-    let object: BTreeMap<String, Value>;
-    match data.as_object().ok_or("Error: JSON data does not describe an object.") {
-        Ok(_object) => {
-            object  = _object.clone();
-        },
-        Err(err)    => {
+    let object            = try!(data.as_object().ok_or("Error: JSON data does not describe an object.")).clone();
+    let json_value: Value = try!(object.get(field).ok_or("Error: The field has not been found in the JSON data.")).clone();
 
-            return Err(err);
-        }
-    }
-
-    let json_value: Value;
-    match object.get(field).ok_or("Error: The field has not been found in the JSON data.") {
-        Ok(_json_value) => {
-            json_value  = _json_value.clone();
-        }
-        Err(err)        => {
-            return Err(err)
-        }
-    }
-
-    match json_value.as_string().ok_or("Error: The field's value is not a string.") {
-        Ok(_value) => Ok(_value.to_string()),
-        Err(err)   => Err(err)
-    }
+    Ok(try!(json_value.as_str().ok_or("Error: The field's value is not a string.")).to_string())
 }
 
 

@@ -89,24 +89,22 @@ impl TrelloBSTConfig {
         if self.config_mode.is_some() {
 
             //Load file
-            let mut file: File;
-            match File::open(self.clone().config_mode.unwrap().as_path()) {
-                Ok(_file) => {file = _file;}
-                Err(_)    =>{
+            let mut file = match File::open(self.clone().config_mode.unwrap().as_path()) {
+                Ok(file) => file,
+                Err(_)   =>{
                     self.config_mode = Option::None;
                     return Err("Error: Failed to open the configuration file for parsing, TrelloBST will continue without saving inputted values into the configuration file.");
                 }
-            }
+            };
 
             //Get config file metadata.
-            let metadata: Metadata;
-            match file.metadata() {
-                Ok(_metadata)  => {metadata = _metadata;}
-                Err(_)         => {
+            let metadata = match file.metadata() {
+                Ok(metadata)  => metadata,
+                Err(_)        => {
                     self.config_mode = Option::None;
                     return Err("Error: Failed to gather metadata of the configuration file, TrelloBST will continue without saving inputted values into the configuration file.")
                 }
-            }
+            };
 
             //Parse config file
             let file_length: usize = metadata.len() as usize;
@@ -115,7 +113,7 @@ impl TrelloBSTConfig {
             } else {
 
                 //Read file
-                let mut file_data: String = String::with_capacity(file_length +1);
+                let mut file_data: String = String::with_capacity(file_length + 1);
                 match file.read_to_string(&mut file_data) {
                     Ok(_)  => (),
                     Err(_) => {
@@ -126,31 +124,29 @@ impl TrelloBSTConfig {
 
 
                 //Parse
-                let json_data: Value;
-                match serde_json::from_str(&file_data){
-                    Ok(_json_data) => json_data = _json_data,
-                    Err(_)  => {
+                let json_data: Value = match serde_json::from_str(&file_data){
+                    Ok(json_data) => json_data,
+                    Err(_)        => {
                         self.config_mode = Option::None;
                         return Err("Error: Failed to parse the JSON data in the configuration file, TrelloBST will continue without saving inputted values into the configuration file.")
                     }
-                }
+                };
 
 
                 //Extract data
                 //Get JSON object
-                let json_object: BTreeMap<String, Value>;
-                match json_data.as_object().ok_or("Error: JSON data in the configuration file does not describe a JSON object, TrelloBST will continue without saving inputted values into the configuration file.") {
-                    Ok(_json_object) => {json_object  = _json_object.clone();},
-                    Err(err)         => {
+                let json_object = match json_data.as_object().ok_or("Error: JSON data in the configuration file does not describe a JSON object, TrelloBST will continue without saving inputted values into the configuration file.") {
+                    Ok(object) => object.clone(),
+                    Err(err)   => {
                         self.config_mode = Option::None;
                         return Err(err);
                     }
-                }
+                };
 
                 //Iterate through object
                 for (key, val) in &json_object {
                     if val.is_string() {
-                        self.key_val_map.insert(key.clone(), val.as_string().unwrap().to_string());
+                        self.key_val_map.insert(key.clone(), val.as_str().unwrap().to_string());
                     } else {
                         println!("Value of the \"{}\" field in the configuration file is not a string, this value will not be considered.", key);
                     }
@@ -166,8 +162,7 @@ impl TrelloBSTConfig {
 
         if self.config_mode.is_some() {
 
-            let mut json_map:        BTreeMap<String, Value> = BTreeMap::new();
-            let     json_map_string: String;
+            let mut json_map: BTreeMap<String, Value> = BTreeMap::new();
 
             for (key, val) in &self.key_val_map {
                 json_map.insert(key.clone(), Value::String(val.clone()));
@@ -175,12 +170,12 @@ impl TrelloBSTConfig {
 
             let value = Value::Object(json_map);
 
-            match serde_json::to_string(&value) {
-                Ok(_json_map_string) => {json_map_string = _json_map_string;}
+            let json_map_string = match serde_json::to_string(&value) {
+                Ok(map)  => map,
                 Err(err) => {
                     return Err(err.description().to_string());
                 }
-            }
+            };
 
             //Open file, overwrite config with what we have
             let mut file: File;
@@ -238,25 +233,19 @@ impl TrelloBSTAPIConfig {
 
     pub fn from_file(config_file_path: &PathBuf) -> Result<TrelloBSTAPIConfig, &'static str>{
 
-        let mut file: File;
-        match File::open(config_file_path.as_path()) {
-            Ok(_file) => {
-                file = _file;
-            }
-            Err(_)    =>{
+        let mut file = match File::open(config_file_path.as_path()) {
+            Ok(file) => file,
+            Err(_)   => {
                 return Err("Cannot open config file for parsing, configuration file won't be used...");
             }
-        }
+        };
 
-        let metadata: Metadata;
-        match file.metadata() {
-            Ok(_metadata)  => {
-                metadata = _metadata;
-            }
-            Err(_)         => {
+        let metadata = match file.metadata() {
+            Ok(metadata)  => metadata,
+            Err(_)        => {
                 return Err("Cannot gather metadata of the configuration file, configuration file won't be used...")
             }
-        }
+        };
 
         let api_config         = TrelloBSTAPIConfig::new();
         let file_length: usize = metadata.len() as usize;
@@ -293,6 +282,3 @@ impl TrelloBSTAPIConfig {
         }
     }
 }
-
-
-

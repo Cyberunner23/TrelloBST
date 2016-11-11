@@ -152,53 +152,29 @@ impl GithubResponse {
 
         //Do API call.
         let     api_call      = format!("https://ci.appveyor.com/api/repositories/gitHub");
-        let mut response_body = String::new();
         let mut header        = Headers::new();
         let     auth          = format!("Bearer {}", config.appveyor_api_token);
 
         header.set_raw("Authorization",  vec![auth.into_bytes()]);
         header.set_raw("Content-Type",   vec![b"application/json".to_vec()]);
 
-        match utils::rest_api_call_get_with_header(&api_call, header) {
-            Ok(_response_body) => response_body = _response_body,
-            Err(err)           => return Err(err)
-        }
+        let response_body = try!(utils::rest_api_call_get_with_header(&api_call, header));
 
         //Parse raw array.
-        let data: Value;
-        match serde_json::from_str(&response_body){
-            Ok(_data) => data = _data,
-            Err(_)  => {
-                return Err("Error parsing the JSON data")
-            }
-        }
+        let data: Value = match serde_json::from_str(&response_body){
+            Ok(data) => data,
+            Err(_)   => {return Err("Error parsing the JSON data");}
+        };
 
         //Get group Info.
-        let group_info_array: Vec<Value>;
-        match data.as_array() {
-            Some(_group_info_array) => group_info_array = _group_info_array.clone(),
-            None                    => return Err("Error: The JSON response from GithubResponse is not an array.")
-        }
+        let group_info_array: Vec<Value> = try!(data.as_array().ok_or("Error: The JSON response from GithubResponse is not an array.")).clone();
 
         for group in group_info_array {
 
-            let group_info: BTreeMap<String, Value>;
-            match group.as_object() {
-                Some(_group_info) => group_info = _group_info.clone(),
-                None              => return Err("Error: Expected an array of JSON objects in GithubResponse.")
-            }
+            let group_info = try!(group.as_object().ok_or("Error: Expected an array of JSON objects in GithubResponse.")).clone();
 
-            let group_type_value: Value;
-            match group_info.get("groupType") {
-                Some(_group_type_value) => group_type_value = _group_type_value.clone(),
-                None              => return Err("Error: Could not find the \"groupType\" field in a GithubResponse object.")
-            }
-
-            let group_type: String;
-            match group_type_value.as_string() {
-                Some(_group_type) => group_type = _group_type.clone().to_string(),
-                None              => return Err("Error: Failed to parse the value of \"groupType\" in the GithubResponse object.")
-            }
+            let group_type_value = try!(group_info.get("groupType").ok_or("Error: Could not find the \"groupType\" field in a GithubResponse object."));
+            let group_type       = try!(group_type_value.as_str().ok_or("Error: Failed to parse the value of \"groupType\" in the GithubResponse object.")).to_string();
 
             if group_type == "user" {
                 match serde_json::from_value(group) {
@@ -245,17 +221,16 @@ pub fn create_appveyor_yml(term: &mut Box<term::StdoutTerminal>, config: &config
 
     //Encrypt Variables
     let status             = utils::StatusPrint::from_str(term, "Encrypting Trello API values.");
-    let encrypted_variables: AppVeyorEncryptedVars;
-    match encrypt_vars(&board_info, &config) {
+    let encrypted_variables = match encrypt_vars(&board_info, &config) {
         Ok(vars) => {
             status.success(term);
-            encrypted_variables = vars;
+            vars
         },
         Err(err) => {
             status.error(term);
             return Err(err)
         }
-    }
+    };
 
     //Generate File
     let status = utils::StatusPrint::from_str(term, "Generating appveyor.yml");
@@ -314,19 +289,13 @@ pub fn repo_selection(term: &mut Box<term::StdoutTerminal>, config: &config::Tre
     }
 
     //Get selected repo.
-    let mut repo =  Repositories::new();
-    match repos.get(&option) {
-        Some(_repo) => repo = _repo.clone(),
-        None              => return Err("Error: Faied to acquire the repo information for the selected option.")
-    }
+    let mut repo = try!(repos.get(&option).ok_or("Error: Faied to acquire the repo information for the selected option.")).clone();
 
     //Link repo.
     //NOTE: This is pretty hacky...
     status                = utils::StatusPrint::from_str(term, "Adding the repository to AppVeyor.");
     let     http_client   = Client::new();
-    let mut response:       Response;
     let mut response_body = String::new();
-    let     api_call_url:   Url;
     let     api_call      = format!("https://ci.appveyor.com/api/projects");
     let mut header        = Headers::new();
     let     auth          = format!("Bearer {}", config.appveyor_api_token);
@@ -334,28 +303,29 @@ pub fn repo_selection(term: &mut Box<term::StdoutTerminal>, config: &config::Tre
     header.set_raw("Authorization",  vec![auth.into_bytes()]);
     header.set_raw("Content-Type",   vec![b"application/json".to_vec()]);
 
-    match api_call.into_url() {
-        Ok(url) => api_call_url = url,
+    let api_call_url = match api_call.into_url() {
+        Ok(url) => url,
         Err(_)  => {
             status.error(term);
             return Err("Error while parsing API call url.")
         }
-    }
+    };
 
     let mut body: String = "{\"repositoryProvider\":\"gitHub\", \"repositoryName\":\"".to_string();
     body.push_str(&repo.full_name[..]);
     body.push_str("\"}");
-    let body_len = body.len().clone();
-    match http_client.post(api_call_url)
+
+    let     body_len = body.len().clone();
+    let mut response = match http_client.post(api_call_url)
     .headers(header)
     .body(Body::BufBody(&body.into_bytes()[..], body_len))
     .send() {
-        Ok(res) => response = res,
+        Ok(res) => res,
         Err(_)  => {
             status.error(term);
             return Err("Error calling the API.")
         }
-    }
+    };
 
     match response.read_to_string(&mut response_body){
         Ok(_)  => (),
@@ -376,47 +346,19 @@ pub fn repo_selection(term: &mut Box<term::StdoutTerminal>, config: &config::Tre
 
 
 pub fn encrypt_vars(board_info: &trello::TrelloBoardInfo, config: &config::TrelloBSTAPIConfig) -> Result<AppVeyorEncryptedVars, &'static str> {
-
-    let enc_trello_app_token: String;
-    match appveyor_encrypt_var(&config, &config.trello_app_token) {
-        Ok(_enc_trello_app_token) => enc_trello_app_token = _enc_trello_app_token,
-        Err(err) => return Err(err)
-    }
-
-    let enc_list_id: String;
-    match appveyor_encrypt_var(&config, &board_info.list_id) {
-        Ok(_enc_list_id) => enc_list_id = _enc_list_id,
-        Err(err) => return Err(err)
-    }
-
-    let enc_build_pass_id: String;
-    match appveyor_encrypt_var(&config, &board_info.build_pass_id) {
-        Ok(_enc_build_pass_id) => enc_build_pass_id = _enc_build_pass_id,
-        Err(err) => return Err(err)
-    }
-
-    let enc_build_fail_id: String;
-    match appveyor_encrypt_var(&config, &board_info.build_fail_id) {
-        Ok(_enc_build_fail_id) => enc_build_fail_id = _enc_build_fail_id,
-        Err(err) => return Err(err)
-    }
-
     Ok(AppVeyorEncryptedVars{
-        trello_app_token: enc_trello_app_token,
-        list_id:          enc_list_id,
-        build_pass_id:    enc_build_pass_id,
-        build_fail_id:    enc_build_fail_id
+        trello_app_token: try!(appveyor_encrypt_var(&config, &config.trello_app_token)),
+        list_id:          try!(appveyor_encrypt_var(&config, &board_info.list_id)),
+        build_pass_id:    try!(appveyor_encrypt_var(&config, &board_info.build_pass_id)),
+        build_fail_id:    try!(appveyor_encrypt_var(&config, &board_info.build_fail_id))
     })
-
 }
 
 
 pub fn appveyor_encrypt_var(config: &config::TrelloBSTAPIConfig, var: &String) -> Result<String, &'static str> {
 
     let     http_client   = Client::new();
-    let mut response:       Response;
     let mut response_body = String::new();
-    let     api_call_url:   Url;
     let     api_call      = format!("https://ci.appveyor.com/api/account/encrypt");
     let mut header        = Headers::new();
     let     auth          = format!("Bearer {}", config.appveyor_api_token);
@@ -424,43 +366,29 @@ pub fn appveyor_encrypt_var(config: &config::TrelloBSTAPIConfig, var: &String) -
     header.set_raw("Authorization",  vec![auth.into_bytes()]);
     header.set_raw("Content-Type",   vec![b"application/json;charset=utf-8".to_vec()]);
 
-    match api_call.into_url() {
-        Ok(url) => api_call_url = url,
-        Err(_)  => {
-            return Err("Error while parsing API call url.")
-        }
-    }
+    let api_call_url = match api_call.into_url() {
+        Ok(url) => url,
+        Err(_)  => {return Err("Error while parsing API call url.");}
+    };
 
     let mut body: String = "{\"plainValue\":\"".to_string();
     body.push_str(&var[..]);
     body.push_str("\"}");
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    let body2 = body.clone();
-    //let mut content_length: Vec<u8> = Vec::new();
-    //content_length.push(81);
-    //header.set_raw("Content-Length",   vec![content_length]);
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
     let body_len = body.len().clone();
-    match http_client.post(api_call_url)
+    let mut response = match http_client.post(api_call_url)
     .headers(header)
     .body(Body::BufBody(&body.into_bytes()[..], body_len))
     .send() {
-        Ok(res) => response = res,
-        Err(_)  => {
-            return Err("Error calling the API.")
-        }
-    }
+        Ok(res) => res,
+        Err(_)  => {return Err("Error calling the API.");}
+    };
 
     match response.read_to_string(&mut response_body){
         Ok(_)  => (),
-        Err(_) => {
-            return Err("Error converting the API response to a string.")
-        }
+        Err(_) => {return Err("Error converting the API response to a string.");}
     }
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    println!("\\\\\\\\\\\\\\\\\\\\\\{}", body2);
-    println!("//////////////////////{}", response_body);
     if response_body.contains("{\"message\":") {
         return Err("Error encrypting variable.")
     }
@@ -470,22 +398,19 @@ pub fn appveyor_encrypt_var(config: &config::TrelloBSTAPIConfig, var: &String) -
 
 pub fn generate_file(term: &mut Box<term::StdoutTerminal>, ci_config_output_dir: &PathBuf, encrypted_vars: &AppVeyorEncryptedVars) -> Result<(), &'static str> {
 
-    let status                         = utils::StatusPrint::from_str(term, "Generating appveyor.yml");
-    let mut appveyor_file:               File;
+    let    status                      = utils::StatusPrint::from_str(term, "Generating appveyor.yml");
     let mut local_ci_config_output_dir = ci_config_output_dir.clone();
+
     local_ci_config_output_dir.push("appveyor.yml");
-    match File::create(local_ci_config_output_dir.as_path()) {
-        Ok(_appveyor_file)  => {
-            appveyor_file = _appveyor_file;
-        }
-        Err(_)    => {
+    let mut appveyor_file = match File::create(local_ci_config_output_dir.as_path()) {
+        Ok(file) => file,
+        Err(_)   => {
             status.error(term);
             return Err("Failed to create appveyor.yml");
         }
-    }
+    };
 
-    let file_data: String;
-    file_data = format!("
+    let file_data = format!("
 environment:
   BUILD_DIRECTORY: ./
   COMPILER: MSVC
@@ -560,14 +485,3 @@ on_failure:
     status.success(term);
     Ok(())
 }
-
-
-
-
-
-
-
-
-
-
-
