@@ -122,6 +122,16 @@ impl Trello {
             println!("Setting up Trello API Token...");
             get_input_string!(term, &mut app_token, "Log in to Trello.com and enter the app token from https://trello.com/1/authorize?response_type=token&key={}&scope=read%2Cwrite&expiration=never&name=TrelloBST : ", trello_api_key);
             config.set(&trello_app_token_config_key, &app_token);
+
+            //Save config
+            status = utils::StatusPrint::from_str(&mut term, "Saving configuration file...");
+            match config.save() {
+                Ok(())   => {status.success(&mut term);},
+                Err(err) => {
+                    status.error(&mut term);
+                    writeln_red!(term, "Error: Failed to save the configuration file: {}, TrelloBST will continue without saving inputted values into the configuration file.", err);
+                }
+            }
         }
     }
 

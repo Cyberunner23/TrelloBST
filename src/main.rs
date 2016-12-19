@@ -374,16 +374,6 @@ fn main() {
         Err(err) => {panic!("A fatal error occured while settting up the trello board: {}", err);}
     }
 
-    //Save config
-    status = utils::StatusPrint::from_str(&mut term, "Saving configuration file...");
-    match config.save() {
-        Ok(())   => {status.success(&mut term);},
-        Err(err) => {
-            status.error(&mut term);
-            writeln_red!(term, "Error: Failed to save the configuration file: {}, TrelloBST will continue without saving inputted values into the configuration file.", err);
-        }
-    }
-
 
     //TODO: Finish this section
     //create CI config
