@@ -13,6 +13,7 @@ bafore_script:
       brew update
       brew outdated openssl
       brew upgrade openssl
+      brew link openssl --force
     fi
 
 script:
