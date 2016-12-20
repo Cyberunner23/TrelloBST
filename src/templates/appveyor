@@ -1,49 +1,38 @@
-environment:
-  BUILD_DIRECTORY: ./
-  COMPILER: MSVC
-  TRELLO_API_KEY: {0}
-  TRELLO_APP_TOKEN:
-    secure: {1}
-  TRELLO_API_LIST_ID:
-    secure: {2}
-  TRELLO_API_BUILD_PASS_ID:
-    secure: {3}
-  TRELLO_API_BUILD_FAIL_ID:
-    secure: {4}
 
 install:
-before_build:
 build_script:
+
+environment:
+  BUILD_DIRECTORY: ./
+  TRELLOBST_DIR=./TrelloBST
+  COMPILER: MSVC
+  TRELLO_APP_TOKEN:
+    secure: <TRELLO_API_TOKEN>
+  TRELLO_API_LIST_ID:
+    secure: <TRELLO_API_LIST_ID>
+  TRELLO_API_BUILD_PASS_ID:
+    secure: <TRELLO_API_BUILD_PASS_ID>
+  TRELLO_API_BUILD_FAIL_ID:
+    secure: <TRELLO_API_BUILD_FAIL_ID>
+
+cache:
+  - %TRELLOBST_DIR%
 
 on_success:
   - ps: |
       Remove-item alias:curl
       cd $($env:BUILD_DIRECTORY)
       7z a -r build.zip ./
-      $buildLink       = [string](curl --silent --upload-file .\\build.zip https://transfer.sh/build.zip)
-      $appveyor_branch = \"[$($env:APPVEYOR_REPO_BRANCH)]\"
-      $ci_name         = \"[AppVeyor]\"
-      $os_name         = \"[Windows]\"
-      $compiler        = \"[$($env:COMPILER)]:%20\"
-      $pass            = \"#$($env:APPVEYOR_BUILD_NUMBER)%20PASSED\"
-      $card_name       = \"name=$($appveyor_branch)$($ci_name)$($os_name)$($compiler)$($pass)\"
-      $additional_data = \"&due=null&pos=top\"
-      $description     = \"&desc=\\[Build\\]:%20$($buildLink)%0D\\[Logs\\]:%20https://ci.appveyor.com/project/$($env:APPVEYOR_REPO_NAME)/build/$($env:APPVEYOR_BUILD_VERSION)/job/$($env:APPVEYOR_JOB_ID)\"
-      $trello_data     = \"&idList=$($env:TRELLO_API_LIST_ID)&idLabels=$($env:TRELLO_API_BUILD_PASS_ID)&token=$($env:TRELLO_APP_TOKEN)&key=$($env:TRELLO_API_KEY)\"
-      $data            = \"$($env:card_name)$($env:additional_data)$($env:description)$($env:trello_data)\"
-      curl -s --data $($data) https://api.trello.com/1/cards > $null
+      $BUILD_LINK        = [string](curl --silent --upload-file .\\build.zip https://transfer.sh/build.zip)
+      $TRELLO_CARD_TITLE = "[$($env:APPVEYOR_REPO_BRANCH)][AppVeyor][Windows][$($env:COMPILER)]: #$($env:APPVEYOR_BUILD_NUMBER) PASSED"
+      $TRELLO_CARD_DESC  = "[Build]: $($BUILD_LINK) \n[Logs]:https://ci.appveyor.com/project/$($env:APPVEYOR_REPO_NAME)/build/$($env:APPVEYOR_BUILD_VERSION)/job/$($env:APPVEYOR_JOB_ID)"
+      $($env:TRELLOBST_DIR)/TrelloBST.exe push --pass --title $($TRELLO_CARD_TITLE) --description $($TRELLO_CARD_DESC)
 
 on_failure:
   - ps: |
       Remove-item alias:curl
-      $appveyor_branch = \"[$($env:APPVEYOR_REPO_BRANCH)]\"
-      $ci_name         = \"[AppVeyor]\"
-      $os_name         = \"[Windows]\"
-      $compiler        = \"[$($env:COMPILER)]:%20\"
-      $pass            = \"#$($env:APPVEYOR_BUILD_NUMBER)%20FAILED\"
-      $card_name       = \"name=$($appveyor_branch)$($ci_name)$($os_name)$($compiler)$($pass)\"
-      $additional_data = \"&due=null&pos=top\"
-      $description     = \"&desc=\\[Logs\\]:%20https://ci.appveyor.com/project/$($env:APPVEYOR_REPO_NAME)/build/$($env:APPVEYOR_BUILD_VERSION)/job/$($env:APPVEYOR_JOB_ID)\"
-      $trello_data     = \"&idList=$($env:TRELLO_API_LIST_ID)&idLabels=$($env:TRELLO_API_BUILD_FAIL_ID)&token=$($env:TRELLO_APP_TOKEN)&key=$($env:TRELLO_API_KEY)\"
-      $data            = \"$($env:card_name)$($env:additional_data)$($env:description)$($env:trello_data)\"
-      curl -s --data $($data) https://api.trello.com/1/cards > $null
+      cd $($env:BUILD_DIRECTORY)
+      7z a -r build.zip ./
+      $TRELLO_CARD_TITLE = "[$($env:APPVEYOR_REPO_BRANCH)][AppVeyor][Windows][$($env:COMPILER)]: #$($env:APPVEYOR_BUILD_NUMBER) PASSED"
+      $TRELLO_CARD_DESC  = "[Logs]:https://ci.appveyor.com/project/$($env:APPVEYOR_REPO_NAME)/build/$($env:APPVEYOR_BUILD_VERSION)/job/$($env:APPVEYOR_JOB_ID)"
+      $($env:TRELLOBST_DIR)/TrelloBST.exe push --fail --title $($TRELLO_CARD_TITLE) --description $($TRELLO_CARD_DESC)

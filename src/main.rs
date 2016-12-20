@@ -383,7 +383,7 @@ fn main() {
         //CIs
         let mut ci_manager = ci::CI::new();
         ci_manager.register_ci(Box::new(travis_ci::TravisCI{}));
-        //ci_manager.register_ci(); //NOTE: appveyor
+        ci_manager.register_ci(Box::new(appveyor::AppVeyor{}));
 
         //Save config
         status = utils::StatusPrint::from_str(&mut term, "Saving configuration file...");

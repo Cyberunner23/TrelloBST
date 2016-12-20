@@ -386,9 +386,9 @@ impl TravisCI{
 
         //Get config values
         let trello_app_token = config.get("trello_api_token");
-        let list_id          = config.get("list_id");
-        let build_pass_id    = config.get("build_pass_id");
-        let build_fail_id    = config.get("build_fail_id");
+        let list_id          = config.get("trello_list_id");
+        let build_pass_id    = config.get("trello_label_pass_id");
+        let build_fail_id    = config.get("trello_label_fail_id");
 
         //Create environment variables
         let trello_app_token_env_var = format!("TRELLO_API_TOKEN={}",         trello_app_token);
