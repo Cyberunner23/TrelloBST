@@ -10,11 +10,7 @@ rust:
 
 before_script:
   - if [ ${TRAVIS_OS_NAME} == "osx" ] ; then
-         brew update
-      && brew outdated openssl
-      && brew upgrade openssl
-      && brew link openssl --force
-      && export OPENSSL_INCLUDE_DIR=$(brew --prefix openssl)/include
+         export OPENSSL_INCLUDE_DIR=$(brew --prefix openssl)/include
       && export DEP_OPENSSL_INCLUDE=$(brew --prefix openssl)/include;
     fi
 
