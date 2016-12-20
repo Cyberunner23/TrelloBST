@@ -254,10 +254,6 @@ impl CITrait for TravisCI{
 
 impl TravisCI{
 
-    pub fn new() -> TravisCI {
-        TravisCI{}
-    }
-
     pub fn get_repo_pub_key(&mut self, term: &mut Box<term::StdoutTerminal>, config: &mut config::TrelloBSTConfig, crypto_state: &mut PKey) -> Result<(), String>{
 
         //Get repos.

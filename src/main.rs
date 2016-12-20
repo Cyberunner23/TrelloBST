@@ -382,7 +382,7 @@ fn main() {
 
         //CIs
         let mut ci_manager = ci::CI::new();
-        ci_manager.register_ci(Box::new(travis_ci::TravisCI::new())); //NOTE: travis-ci
+        ci_manager.register_ci(Box::new(travis_ci::TravisCI{}));
         //ci_manager.register_ci(); //NOTE: appveyor
 
         //Save config
