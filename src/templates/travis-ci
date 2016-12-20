@@ -33,7 +33,7 @@ after_success:
         && export BUILD_LINK=$(curl --upload-file ./build.tar.gz https://transfer.sh/build.tar.gz)
         && export TRELLO_CARD_TITLE="[${TRAVIS_BRANCH}][Travis-CI][${TRAVIS_OS_NAME}][${CXXCOMPILER}] -> \#${TRAVIS_BUILD_NUMBER} PASSED"
         && export TRELLO_CARD_DESC="[Build] -> ${BUILD_LINK} \n[Logs] -> https://travis-ci.org/${TRAVIS_REPO_SLUG}/jobs/${TRAVIS_JOB_ID}"
-        && ${TRELLOBST_EXEC} push --pass --title ${TRELLO_CARD_TITLE}" --description "${TRELLO_CARD_DESC}";
+        && ${TRELLOBST_EXEC} push --pass --title "${TRELLO_CARD_TITLE}" --description "${TRELLO_CARD_DESC}";
     fi
 
 after_failure:
