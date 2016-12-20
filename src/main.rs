@@ -29,6 +29,7 @@ use std::error::Error;
 use std::fs;
 use std::fs::OpenOptions;
 use std::io::{self, Write};
+use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::process::exit;
 
@@ -381,7 +382,7 @@ fn main() {
 
         //CIs
         let mut ci_manager = ci::CI::new();
-        //ci_manager.register_ci(); //NOTE: travis-ci
+        ci_manager.register_ci(Box::new(travis_ci::TravisCI::new())); //NOTE: travis-ci
         //ci_manager.register_ci(); //NOTE: appveyor
 
         //Save config
@@ -394,9 +395,45 @@ fn main() {
             }
         }
 
-
-
         //Generate CI file
+        let (filename, file_data) = match ci_manager.generate_ci_config(&mut term, &mut config) {
+            Ok(data) => data,
+            Err(err) => {
+                writeln_red!(term, "Failed to generate the CI config file: {}", err);
+                exit(-1);
+            }
+        };
+
+        //Write/print file
+        match output_mode.clone() {
+            Some(mut dirpath) => {
+
+                let status = utils::StatusPrint::from_string(&mut term, format!("Generating {}", filename));
+
+                dirpath.push(filename.clone());
+                let mut file: File = match File::create(dirpath.as_path()) {
+                    Ok(_file) => {_file}
+                    Err(err) => {
+                        status.error(&mut term);
+                        writeln_red!(term, "Failed to create {} due to {}", filename, err);
+                        exit(-1);
+                    }
+                };
+
+                match file.write_all(file_data.as_bytes()) {
+                    Ok(())   => (),
+                    Err(err) => {
+                        status.error(&mut term);
+                        writeln_red!(term, "Failed to create {} due to {}", filename, err);
+                    }
+                }
+                status.success(&mut term);
+
+            }
+            None          => {
+                println!("Contents for \"{}\" are as following: \n\n{}\n\n", filename, file_data);
+            }
+        }
 
     }
 

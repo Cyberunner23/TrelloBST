@@ -6,49 +6,32 @@ os:
 install:
 script:
 
+
 env:
   global:
     - BUILD_DIRECTORY=./
+    - TRELLOBST_DIR=${HOME}/.TrelloBST
     - secure: <TRELLO_API_TOKEN>
     - secure: <TRELLO_API_LIST_ID>
     - secure: <TRELLO_API_BUILD_PASS_ID>
     - secure: <TRELLO_API_BUILD_FAIL_ID>
 
-
+cache:
+  directories:
+  - ${TRELLOBST_DIR}
 
 after_success:
   - if [ ${{TRAVIS_SECURE_ENV_VARS}} = true ] ; then
-
-        #This whole mess will be replaced by something like "trellobst push --title "[travis][master][<BUILD_STATUS>]: blah" --description "what ever" "
-
-         tar -zcf build.tar.gz ${{BUILD_DIRECTORY}}
-      && buildLink=$(curl --upload-file ./build.tar.gz https://transfer.sh/build.tar.gz)
-      && travis_branch=\"[\"${{TRAVIS_BRANCH}}\"]\"
-      && ci_name=\"[Travis-CI]\"
-      && os_name=\"[\"${{TRAVIS_OS_NAME}}\"]\"
-      && compiler=\"[\"${{CXXCOMPILER}}\"]:\"
-      && pass=\"%20#\"${{TRAVIS_BUILD_NUMBER}}\"%20PASSED\"
-      && message=${{travis_branch}}${{ci_name}}${{os_name}}${{compiler}}${{pass}}
-      && card_name=\"name=\"${{message}}
-      && additional_data=\"&due=null&pos=top\"
-      && description=\"&desc=\\[Build\\]:%20\"${{buildLink}}\"%0D\\[Logs\\]:%20https://travis-ci.org/{5}/jobs/\"${{TRAVIS_JOB_ID}}
-      && trello_data=\"&idList=\"${{TRELLO_API_LIST_ID}}\"&idLabels=\"${{TRELLO_API_BUILD_PASS_ID}}\"&token=\"${{TRELLO_API_TOKEN}}\"&key={0}"
-      && data=${{card_name}}${{additional_data}}${{description}}${{trello_data}}
-      && curl -s -o /dev/null -w \"%{{http_code}}\\n\" --data ${{data}} https://api.trello.com/1/cards;
+        tar -zcf build.tar.gz ${BUILD_DIRECTORY}
+        export BUILD_LINK=$(curl --upload-file ./build.tar.gz https://transfer.sh/build.tar.gz)
+        export TRELLO_CARD_TITLE="[${TRAVIS_BRANCH}][Travis-CI][${TRAVIS_OS_NAME}][${CXXCOMPILER}]: #${TRAVIS_BUILD_NUMBER} PASSED"
+        export TRELLO_CARD_DESC="[Build]: ${BUILD_LINK} \n[Logs]: https://travis-ci.org/${TRAVIS_REPO_SLUG}/jobs/${TRAVIS_JOB_ID}"
+        ${TRELLOBST_DIR}/TrelloBST push --pass --title ${TRELLO_CARD_TITLE} --description ${TRELLO_CARD_DESC}
     fi
 
 after_failure:
   - if [ ${{TRAVIS_SECURE_ENV_VARS}} = true ] ; then
-         travis_branch=\"[\"${{TRAVIS_BRANCH}}\"]\"
-      && ci_name=\"[Travis-CI]\"
-      && os_name=\"[\"${{TRAVIS_OS_NAME}}\"]\"
-      && compiler=\"[\"${{CXXCOMPILER}}\"]:\"
-      && fail=\"%20#\"${{TRAVIS_BUILD_NUMBER}}\"%20FAILED\"
-      && message=${{travis_branch}}${{ci_name}}${{os_name}}${{compiler}}${{fail}}
-      && card_name=\"name=\"${{message}}
-      && additional_data=\"&due=null&pos=top\"
-      && description=\"&desc=\\[Logs\\]:%20https://travis-ci.org/{5}/jobs/\"${{TRAVIS_JOB_ID}}\"
-      && trello_data=\"&idList=\"${{TRELLO_API_LIST_ID}}\"&idLabels=\"${{TRELLO_API_BUILD_FAIL_ID}}\"&token=\"${{TRELLO_API_TOKEN}}\"&key={0}"
-      && data=${{card_name}}${{additional_data}}${{description}}${{trello_data}}
-      && curl -s -o /dev/null -w \"%{{http_code}}\\n\" --data ${{data}} https://api.trello.com/1/cards;
+        export TRELLO_CARD_TITLE="[${TRAVIS_BRANCH}][Travis-CI][${TRAVIS_OS_NAME}][${CXXCOMPILER}]: #${TRAVIS_BUILD_NUMBER} FAILED"
+        export TRELLO_CARD_DESC="[Logs]: https://travis-ci.org/${TRAVIS_REPO_SLUG}/jobs/${TRAVIS_JOB_ID}"
+        ${TRELLOBST_DIR}/TrelloBST push --fail --title ${TRELLO_CARD_TITLE} --description ${TRELLO_CARD_DESC}
     fi

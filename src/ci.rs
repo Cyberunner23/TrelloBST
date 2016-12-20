@@ -41,9 +41,10 @@ use utils;
 
 //NOTE: Trait objects derived from this trait must derive from clone (#[derive(Clone)])
 pub trait CITrait {
+    fn get_filename(&mut self) -> String;
     fn get_name(&mut self) -> String;
-    fn setup(&mut self, term: &mut Box<term::StdoutTerminal>, config: &mut config::TrelloBSTConfig) -> Result<(), &'static str>;
-    fn generate_ci_config(&mut self, config: &mut config::TrelloBSTConfig) -> Result<String, &'static str>;
+    fn setup(&mut self, term: &mut Box<term::StdoutTerminal>, config: &mut config::TrelloBSTConfig) -> Result<(), String>;
+    fn generate_ci_config(&mut self, term: &mut Box<term::StdoutTerminal>, config: &mut config::TrelloBSTConfig) -> Result<(String, String), String>;
 }
 
 
@@ -67,7 +68,7 @@ impl CI {
         self.ci_map.insert(ci.get_name().to_string(), RefCell::new(ci));
     }
 
-    pub fn generate_ci_config(&mut self, term: &mut Box<term::StdoutTerminal>, config: &mut config::TrelloBSTConfig) -> Result<String, &'static str> {
+    pub fn generate_ci_config(&mut self, term: &mut Box<term::StdoutTerminal>, config: &mut config::TrelloBSTConfig) -> Result<(String, String), String> {
 
         //Select CI
         let mut ci_select = utils::MenuBuilder::new("Which Continuous Integration provider do you want a configuration for?".to_string());
@@ -84,8 +85,8 @@ impl CI {
         }
 
         //Generate CI config
-        match selected_ci.generate_ci_config(config) {
-            Ok(ci_config_string) => return Ok(ci_config_string.clone()),
+        match selected_ci.generate_ci_config(term, config) {
+            Ok((filename, data)) => return Ok((filename, data.clone())),
             Err(err)             => return Err(err)
         }
     }

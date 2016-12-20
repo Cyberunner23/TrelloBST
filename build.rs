@@ -48,7 +48,7 @@ mod inner {
         expand!("src/config.in.rs",    "config.rs");
         expand!("src/trello.in.rs",    "trello.rs");
         expand!("src/travis_ci.in.rs", "travis_ci.rs");
-        expand!("src/appveyor.in.rs", "appveyor.rs");
+        expand!("src/appveyor.in.rs",  "appveyor.rs");
     }
 }
 

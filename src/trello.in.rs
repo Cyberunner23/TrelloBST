@@ -124,11 +124,11 @@ impl Trello {
             config.set(&trello_app_token_config_key, &app_token);
 
             //Save config
-            status = utils::StatusPrint::from_str(&mut term, "Saving configuration file...");
+            let status = utils::StatusPrint::from_str(term, "Saving configuration file...");
             match config.save() {
-                Ok(())   => {status.success(&mut term);},
+                Ok(())   => {status.success(term);},
                 Err(err) => {
-                    status.error(&mut term);
+                    status.error(term);
                     writeln_red!(term, "Error: Failed to save the configuration file: {}, TrelloBST will continue without saving inputted values into the configuration file.", err);
                 }
             }
@@ -237,13 +237,21 @@ impl Trello {
 
             let mut response_body = match utils::rest_api_call_get(&api_call) {
                 Ok(response_body) => response_body,
-                Err(err)           => return Err(err)
+                Err(err)           => {
+                    status.error(term);
+                    return Err(err)
+                }
             };
 
             let mut board_lists_list: BoardsResponse = match serde_json::from_str(&response_body){
                 Ok(board_lists_list) => board_lists_list,
-                Err(_)               => return Err("Error parsing the response.",)
+                Err(_)               => {
+                    status.error(term);
+                    return Err("Error parsing the response.");
+                }
             };
+
+            status.success(term);
 
             //Select board list
             let mut board_list_select: utils::MenuBuilder<u64> = utils::MenuBuilder::new("Which board list do you want to use for the build statuses?".to_string());
@@ -317,13 +325,21 @@ impl Trello {
 
             let mut response_body = match utils::rest_api_call_get(&api_call) {
                 Ok(response_body) => response_body,
-                Err(err)          => return Err(err)
+                Err(err)          => {
+                    status.error(term);
+                    return Err(err)
+                }
             };
 
             let board_labels: BoardsLabelsResponse = match BoardsLabelsResponse::from_json(&response_body) {
                 Ok(labels) => labels,
-                Err(err)   => return Err(err)
+                Err(err)   => {
+                    status.error(term);
+                    return Err(err)
+                }
             };
+
+            status.success(term);
 
             //Select labels
             let mut label_select: utils::MenuBuilder<u64> = utils::MenuBuilder::new(String::new());
