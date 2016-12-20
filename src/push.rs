@@ -126,23 +126,23 @@ impl PushConfig {
 pub fn push(api_key: String, is_pass: bool, push_data: PushConfig) -> Result<(), &'static str> {
 
     //Setup push packet header.
-    let     api_call      = format!("https://api.trello.com/1/cards");
+
+    let label: String;
+    if is_pass {
+        label = push_data.trello_api_build_pass_id;
+    } else {
+        label = push_data.trello_api_build_fail_id;
+    }
+
+    let     api_call      = format!("https://api.trello.com/1/cards?key={}&token={}&idList={}&name={}&desc={}&idLabels={}&due=null&pos=top",
+                                    api_key,
+                                    push_data.trello_api_token,
+                                    push_data.trello_api_list_id,
+                                    push_data.card_title,
+                                    push_data.card_desc,
+                                    label);
     let mut response_body = String::new();
     let mut header        = Headers::new();
-
-    header.set_raw("key",      vec![api_key.into_bytes()]);//
-    header.set_raw("token",    vec![push_data.trello_api_token.into_bytes()]);//
-    header.set_raw("name",     vec![push_data.card_title.into_bytes()]);//
-    header.set_raw("desc",     vec![push_data.card_desc.into_bytes()]);//
-    header.set_raw("idList",   vec![push_data.trello_api_list_id.into_bytes()]);//
-    header.set_raw("due",      vec![b"null".to_vec()]);//
-    header.set_raw("pos",      vec![b"top".to_vec()]);//
-
-    if is_pass {
-        header.set_raw("idLabels", vec![push_data.trello_api_build_pass_id.into_bytes()]);//
-    } else {
-        header.set_raw("idLabels", vec![push_data.trello_api_build_fail_id.into_bytes()]);//
-    }
 
     //Send off the packet
     match utils::rest_api_call_post_with_header(&api_call, header) {
