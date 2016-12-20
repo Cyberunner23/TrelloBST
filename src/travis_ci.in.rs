@@ -385,7 +385,7 @@ impl TravisCI{
     pub fn encrypt_vars(&mut self, config: &mut config::TrelloBSTConfig, crypto_state: &mut PKey) -> TravisEncryptedVars{
 
         //Get config values
-        let trello_app_token = config.get("trello_api_token");
+        let trello_app_token = config.get("trello_app_token");
         let list_id          = config.get("trello_list_id");
         let build_pass_id    = config.get("trello_label_pass_id");
         let build_fail_id    = config.get("trello_label_fail_id");
