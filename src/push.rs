@@ -28,6 +28,9 @@ use std::env;
 extern crate hyper;
 use hyper::header::Headers;
 
+extern crate url;
+use self::url::percent_encoding;
+
 use utils;
 
 ////////////////////////////////////////////////////////////
@@ -134,13 +137,16 @@ pub fn push(api_key: String, is_pass: bool, push_data: PushConfig) -> Result<(),
         label = push_data.trello_api_build_fail_id;
     }
 
-    let     api_call      = format!("https://api.trello.com/1/cards?key={}&token={}&idList={}&name={}&desc={}&idLabels={}&due=null&pos=top",
-                                    api_key,
-                                    push_data.trello_api_token,
-                                    push_data.trello_api_list_id,
-                                    push_data.card_title,
-                                    push_data.card_desc,
-                                    label);
+    let mut card_title: String = percent_encoding::percent_encode(push_data.card_title.as_bytes(), percent_encoding::USERINFO_ENCODE_SET).collect();
+    let mut card_desc:  String = percent_encoding::percent_encode(push_data.card_desc.as_bytes(),  percent_encoding::USERINFO_ENCODE_SET).collect();
+
+    let api_call = format!("https://api.trello.com/1/cards?key={}&token={}&idList={}&name={}&desc={}&idLabels={}&due=null&pos=top",
+                           api_key,
+                           push_data.trello_api_token,
+                           push_data.trello_api_list_id,
+                           card_title,
+                           card_desc,
+                           label);
     let mut response_body = String::new();
     let mut header        = Headers::new();
 
