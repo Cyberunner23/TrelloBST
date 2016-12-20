@@ -1,5 +1,4 @@
 
-install:
 build_script:
 
 environment:
@@ -17,6 +16,13 @@ environment:
 
 cache:
   - %TRELLOBST_DIR%
+
+install:
+  - ps: |
+      if(!(Test-Path "$($env:TRELLOBST_DIR)/TrelloBST.exe")) {
+          Invoke-WebRequest "https://github.com/Cyberunner23/TrelloBST/releases/download/v2.0.0-pre1/AppVeyor-win-stable.zip" -OutFile "./AppVeyor-win-stable.zip"
+          Expand-ZIPFile –File "./AppVeyor-win-stable.zip" –Destination "$($env:TRELLOBST_DIR)"
+      }
 
 on_success:
   - ps: |
