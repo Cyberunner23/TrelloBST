@@ -31,7 +31,7 @@ build_script:
   - cmd: cargo build
 
 cache:
-  - '%UserProfile%/.cargo'
+  - '%UserProfile%\.cargo'
 
 on_success:
   - ps: |
