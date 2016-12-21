@@ -24,11 +24,8 @@
 */
 
 use std::collections::BTreeMap;
-use std::error::Error;
 use std::io;
 use std::io::Write;
-use std::fs::File;
-use std::path::PathBuf;
 
 use std::io::Read;
 
@@ -38,15 +35,12 @@ extern crate hyper;
 use hyper::Client;
 use hyper::client::Body;
 use hyper::client::IntoUrl;
-use hyper::client::response::Response;
 use hyper::header::Headers;
-use hyper::Url;
 
 use serde_json::Value;
 
 use ci::CITrait;
 use config;
-use trello;
 use utils;
 
 
@@ -61,8 +55,8 @@ include!("utils_macros.rs");
 //                        Structs                         //
 ////////////////////////////////////////////////////////////
 
-#[derive(Deserialize)]
-#[derive(Clone)]
+#[derive(Clone, Deserialize)]
+#[allow(dead_code)]
 pub struct Repositories {
     id:                  u64,
     #[serde(rename="groupName")]
@@ -90,6 +84,7 @@ pub struct Repositories {
 }
 
 #[derive(Deserialize)]
+#[allow(dead_code)]
 pub struct GroupInfo {
     name:         String,
     #[serde(rename="avatarUrl")]
@@ -115,26 +110,6 @@ pub struct AppVeyorEncryptedVars {
 ////////////////////////////////////////////////////////////
 //                         Impls                          //
 ////////////////////////////////////////////////////////////
-
-impl Repositories {
-    pub fn new() -> Repositories {
-        Repositories {
-            id:                  0,
-            group_name:          String::new(),
-            group_type:          String::new(),
-            group_avatar_url:    String::new(),
-            name:                String::new(),
-            full_name:           String::new(),
-            description:         Some(String::new()),
-            is_private:          false,
-            scm_type:            String::new(),
-            master_branch:       String::new(),
-            has_children:        false,
-            show_scm_moniker:    false,
-            show_sccess_moniker: false,
-        }
-    }
-}
 
 impl GithubResponse {
 
@@ -356,7 +331,7 @@ impl AppVeyor {
         }
 
         //Get selected repo.
-        let mut repo = try!(repos.get(&option).ok_or("Error: Faied to acquire the repo information for the selected option.")).clone();
+        let repo = try!(repos.get(&option).ok_or("Error: Faied to acquire the repo information for the selected option.")).clone();
 
         //Link repo.
         //NOTE: This is pretty hacky...

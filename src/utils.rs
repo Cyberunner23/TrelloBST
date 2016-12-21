@@ -24,18 +24,13 @@
 */
 
 use std::collections::BTreeMap;
-use std::fs;
-use std::fs::OpenOptions;
 use std::io::{self, Read, Write};
-use std::path::PathBuf;
 use std::process::exit;
 
 extern crate hyper;
 use hyper::Client;
 use hyper::client::IntoUrl;
-use hyper::client::response::Response;
 use hyper::header::Headers;
-use hyper::Url;
 
 extern crate serde;
 extern crate serde_json;
@@ -128,6 +123,7 @@ impl<T> MenuBuilder<T> {
         self.menu_items.insert(self.menu_item_counter, menu_item);
     }
 
+    #[allow(dead_code)] //Rustc is reporting dead code even though it is used in trello.in.rs
     pub fn add_entry_color(&mut self, text_color: u16, name: String, entry_object: T) {
         let menu_item = MenuBuilderItem {
             entry_name: name,
@@ -146,10 +142,10 @@ impl<T> MenuBuilder<T> {
 
             match object.text_color {
                 Some(color) => {
-                    term.fg(color);
-                    writeln!(term, "[{}]: {}", entry_number, object.entry_name);
-                    term.flush();
-                    term.reset();
+                    match_to_none!(term.fg(color));
+                    match_to_none!(writeln!(term, "[{}]: {}", entry_number, object.entry_name));
+                    match_to_none!(term.flush());
+                    match_to_none!(term.reset());
                 }
                 None => {
                     println!("[{}]: {}", entry_number, object.entry_name);

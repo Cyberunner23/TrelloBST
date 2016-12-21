@@ -25,10 +25,7 @@
 
 //TODO: put api calling in a function or macro
 
-use std::collections::BTreeMap;
-use std::error::Error;
 use std::io;
-use std::process::exit;
 
 use config;
 
@@ -50,14 +47,6 @@ include!("utils_macros.rs");
 ////////////////////////////////////////////////////////////
 //                        Structs                         //
 ////////////////////////////////////////////////////////////
-
-pub struct TrelloBoardInfo {
-    pub board_id:      String,
-    pub list_id:       String,
-    pub build_pass_id: String,
-    pub build_fail_id: String,
-}
-
 
 #[derive(Deserialize)]
 pub struct BoardNameID {
@@ -135,15 +124,16 @@ impl Trello {
         }
     }
 
+    #[allow(unused_assignments)]
     pub fn setup_board(&mut self, term: &mut Box<term::StdoutTerminal>, trello_api_key: &str, config: &mut config::TrelloBSTConfig) -> Result<(), &'static str> {
 
         //Get list of boards
-        let     status                      = utils::StatusPrint::from_str(term, "Acquiring board list from Trello.");
-        let     trello_api_token_config_key = "trello_api_token";
-        let mut api_call                    = format!("https://api.trello.com/1/members/me?fields=&boards=open&board_fields=name&key={}&token={}", trello_api_key, config.get(trello_api_token_config_key));
+        let status                      = utils::StatusPrint::from_str(term, "Acquiring board list from Trello.");
+        let trello_api_token_config_key = "trello_api_token";
+        let api_call                    = format!("https://api.trello.com/1/members/me?fields=&boards=open&board_fields=name&key={}&token={}", trello_api_key, config.get(trello_api_token_config_key));
 
         //  Do API call
-        let mut response_body = match utils::rest_api_call_get(&api_call) {
+        let response_body = match utils::rest_api_call_get(&api_call) {
             Ok(response_body) => response_body,
             Err(err)          => {
                 status.error(term);
@@ -152,7 +142,7 @@ impl Trello {
         };
 
         //  Parse JSON data
-        let mut board_list: MembersMeBoardsResponse = match serde_json::from_str(&response_body){
+        let board_list: MembersMeBoardsResponse = match serde_json::from_str(&response_body){
             Ok(board_list) => board_list,
             Err(_)         => {
                 status.error(term);
@@ -199,16 +189,15 @@ impl Trello {
             //Create board
             let     status        = utils::StatusPrint::from_str(term, "Creating new board.");
             let     api_call      = format!("https://trello.com/1/boards?name={}&defaultLists=false&key={}&token={}", board_name, trello_api_key, config.get(trello_api_token_config_key));
-            let mut response_body = String::new();
 
             //  Do API call
-            match utils::rest_api_call_post(&api_call) {
-                Ok(_response_body) => response_body = _response_body,
-                Err(err)           => {
+            let response_body = match utils::rest_api_call_post(&api_call) {
+                Ok(response) => response,
+                Err(err)     => {
                     status.error(term);
                     return Err(err);
                 }
-            }
+            };
 
             //Get ID of the new board
             match utils::get_single_json_value_as_string(&response_body, "id") {
@@ -235,7 +224,7 @@ impl Trello {
             let     status           = utils::StatusPrint::from_str(term, "Acquiring board's lists list from Trello.");
             let     api_call         = format!("https://api.trello.com/1/boards/{}?lists=open&list_fields=name&fields=name,desc&key={}&token={}", config.get("trello_board_id"), trello_api_key, config.get(trello_api_token_config_key));
 
-            let mut response_body = match utils::rest_api_call_get(&api_call) {
+            let response_body = match utils::rest_api_call_get(&api_call) {
                 Ok(response_body) => response_body,
                 Err(err)           => {
                     status.error(term);
@@ -243,7 +232,7 @@ impl Trello {
                 }
             };
 
-            let mut board_lists_list: BoardsResponse = match serde_json::from_str(&response_body){
+            let board_lists_list: BoardsResponse = match serde_json::from_str(&response_body){
                 Ok(board_lists_list) => board_lists_list,
                 Err(_)               => {
                     status.error(term);
@@ -289,7 +278,7 @@ impl Trello {
             let     api_call                    = format!("https://trello.com/1/lists?name={}&idBoard={}&defaultLists=false&key={}&token={}", list_name, config.get("trello_board_id"), trello_api_key, config.get(trello_api_token_config_key));
             let     status                      = utils::StatusPrint::from_str(term, "Creating the list.");
 
-            let mut response_body = match utils::rest_api_call_post(&api_call) {
+            let response_body = match utils::rest_api_call_post(&api_call) {
                 Ok(response_body) => response_body,
                 Err(err)          => {
                     status.error(term);
@@ -320,10 +309,9 @@ impl Trello {
 
             //Acquire label list
             let     api_call         = format!("https://api.trello.com/1/boards/{}?labels=all&label_fields=name,color&fields=none&key={}&token={}", config.get("trello_board_id"), trello_api_key, config.get(trello_api_token_config_key));
-            let mut board_label_list = BoardsLabelsResponse::new();
             let     status           = utils::StatusPrint::from_str(term, "Acquiring board's labels from Trello.");
 
-            let mut response_body = match utils::rest_api_call_get(&api_call) {
+            let response_body = match utils::rest_api_call_get(&api_call) {
                 Ok(response_body) => response_body,
                 Err(err)          => {
                     status.error(term);
@@ -430,7 +418,7 @@ impl Trello {
         let api_call                    = format!("https://trello.com/1/board/{}/labels?name={}&color={}&key={}&token={}", config.get("trello_board_id"), label_name, label_color, trello_api_key, config.get(trello_api_token_config_key));
         let status                      = utils::StatusPrint::from_str(term, "Creating the label.");
 
-        let mut response_body = match utils::rest_api_call_post(&api_call) {
+        let response_body = match utils::rest_api_call_post(&api_call) {
             Ok(response_body) => response_body,
             Err(err)          => {
                 status.error(term);
@@ -454,41 +442,6 @@ impl Trello {
 ////////////////////////////////////////////////////////////
 //                         Impls                          //
 ////////////////////////////////////////////////////////////
-
-//NOTE: values to be moved to config sys
-impl TrelloBoardInfo {
-    pub fn new() -> TrelloBoardInfo {
-        TrelloBoardInfo {
-            board_id:      String::new(),
-            list_id:       String::new(),
-            build_pass_id: String::new(),
-            build_fail_id: String::new(),
-        }
-    }
-}
-
-
-impl MembersMeBoardsResponse{
-    pub fn new() -> MembersMeBoardsResponse{
-        MembersMeBoardsResponse{
-            id:     String::new(),
-            boards: Vec::new(),
-        }
-    }
-}
-
-
-impl BoardsResponse {
-    pub fn new() -> BoardsResponse{
-        BoardsResponse {
-            id:    String::new(),
-            name:  String::new(),
-            desc:  String::new(),
-            lists: Vec::new(),
-        }
-    }
-}
-
 
 impl BoardsLabelsResponse {
 
@@ -528,7 +481,7 @@ impl BoardsLabelsResponse {
         for label in &labels_array {
 
             //Get label object
-            let mut label_object = try!(label.as_object().ok_or("Error: An entry in the \"labels\" field does not describe an object.")).clone();
+            let label_object = try!(label.as_object().ok_or("Error: An entry in the \"labels\" field does not describe an object.")).clone();
 
             //Get "id" field
             let label_id_value: Value = try!(label_object.get("id").ok_or("Error: Failed to acquire the \"id\" field in a \"labels\" field.")).clone();

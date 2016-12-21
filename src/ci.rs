@@ -26,9 +26,6 @@
 use std::collections::BTreeMap;
 use std::cell::RefCell;
 
-extern crate core;
-use self::core::ops::DerefMut;
-
 extern crate term;
 
 use config;

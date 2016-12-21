@@ -25,9 +25,6 @@
 
 use std::env;
 
-extern crate hyper;
-use hyper::header::Headers;
-
 extern crate url;
 use self::url::percent_encoding;
 
@@ -52,6 +49,8 @@ pub struct PushConfig {
 ////////////////////////////////////////////////////////////
 
 impl PushConfig {
+
+    #[allow(unused_assignments)]
     pub fn fill(cli_card_title:    String,
                 cli_card_desc:     String,
                 cli_build_pass_id: String,
@@ -147,17 +146,9 @@ pub fn push(api_key: String, is_pass: bool, push_data: PushConfig) -> Result<(),
                            card_title,
                            card_desc,
                            label);
-    let mut response_body = String::new();
-    let mut header        = Headers::new();
 
     //Send off the packet
-    match utils::rest_api_call_post_with_header(&api_call, header) {
-        Ok(_response_body) => {
-            response_body = _response_body;
-            Ok(())
-        }
-        Err(err)           => {
-            Err(err)
-        }
-    }
+    try!(utils::rest_api_call_post(&api_call));
+
+    Ok(())
 }

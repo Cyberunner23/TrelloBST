@@ -28,7 +28,7 @@ use std::env;
 use std::error::Error;
 use std::fs;
 use std::fs::OpenOptions;
-use std::io::{self, Write};
+use std::io::{Write};
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::process::exit;
@@ -81,7 +81,7 @@ pub fn dir_path_validator(dir_path: String) -> Result<(), String> {
                 return Err(format!("\"{}\" is not a directory.", dir_path));
             }
         },
-        Err(err)     => {
+        Err(_)       => {
             return Err(format!("Failed to acquire metadata for \"{}\", do you have permission to read/write to this directory?", dir_path));
         }
     }
@@ -92,7 +92,7 @@ pub fn dir_path_validator(dir_path: String) -> Result<(), String> {
         //Generate a file name.
         let mut tmp_file_path:     String = dir_path.clone();
         let     tmp_file_name:     String = format!("ab{}ba.tmp", counter);
-        let mut tmp_file_path_buf: PathBuf;
+        let     tmp_file_path_buf: PathBuf;
         tmp_file_path.push_str(tmp_file_name.as_str());
         tmp_file_path_buf = PathBuf::from(&tmp_file_path);
 
@@ -103,7 +103,7 @@ pub fn dir_path_validator(dir_path: String) -> Result<(), String> {
                     match fs::remove_file(&tmp_file_path_buf) {
                         Ok(_)  => return Ok(()),
                         Err(err) => {
-                            return Err(format!("Failed to delete temporary file: \"{}\"", tmp_file_path));
+                            return Err(format!("Failed to delete temporary file: \"{}\" ({})", tmp_file_path, err));
                         }
                     }
                 }
@@ -135,9 +135,6 @@ fn main() {
     ////////////////////////////////////////////////////////////
     //               Parse command line options               //
     ////////////////////////////////////////////////////////////
-
-    let mut config_file_path = PathBuf::new();
-    let mut output_direcrory = PathBuf::new();
 
     let matches = App::new("TrelloBST")
     .version(trellobst_version)

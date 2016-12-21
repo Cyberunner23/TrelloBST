@@ -24,12 +24,8 @@
 */
 
 
-use std::collections::BTreeMap;
-use std::error::Error;
 use std::io;
 use std::io::{Cursor, Write};
-use std::fs::File;
-use std::path::PathBuf;
 use std::process::exit;
 
 extern crate rustc_serialize;
@@ -49,7 +45,6 @@ use self::openssl::ssl::error::SslError;
 
 use ci::CITrait;
 use config;
-use trello;
 use utils;
 
 
@@ -74,6 +69,7 @@ pub struct TravisEncryptedVars {
 #[derive(Deserialize)]
 pub struct RepoResponse {
     key:  String,
+    #[allow(dead_code)]
     fingerprint: String
 }
 
@@ -94,15 +90,6 @@ pub struct Hook {
 ////////////////////////////////////////////////////////////
 //                         Impls                          //
 ////////////////////////////////////////////////////////////
-
-impl RepoResponse {
-    pub fn new() -> RepoResponse {
-        RepoResponse {
-            key:         String::new(),
-            fingerprint: String::new()
-        }
-    }
-}
 
 impl ParsedHooksResponse {
 
@@ -254,6 +241,7 @@ impl CITrait for TravisCI{
 
 impl TravisCI{
 
+    #[allow(unused_assignments)]
     pub fn get_repo_pub_key(&mut self, term: &mut Box<term::StdoutTerminal>, config: &mut config::TrelloBSTConfig, crypto_state: &mut PKey) -> Result<(), String>{
 
         //Get repos.
@@ -307,7 +295,6 @@ impl TravisCI{
                 let     status        = utils::StatusPrint::from_str(term, "Linking repo to Travis-CI.");
                 let     api_call      = format!("https://api.travis-ci.org/hooks/{}?hook[active]=true", hook.id);
                 let     auth          = format!("token {}", config.get("travis_access_token"));
-                let mut response_body = String::new();
                 let mut header        = Headers::new();
 
                 header.set_raw("User-Agent",    vec![b"Travis_TrelloBST/1.0.0".to_vec()]);
@@ -317,9 +304,9 @@ impl TravisCI{
                 header.set_raw("Content-Type",  vec![b"application/json".to_vec()]);
 
                 match utils::rest_api_call_put_with_header(&api_call, header) {
-                    Ok(_response_body) => {
+                    Ok(_) => {
                         status.success(term);
-                        response_body = _response_body
+                        ()
                     }
                     Err(err)           => {
                         status.error(term);
@@ -334,19 +321,18 @@ impl TravisCI{
             let     status              = utils::StatusPrint::from_str(term, "Acquiring repo's public RSA key.");
             let     api_call            = format!("https://api.travis-ci.org/repos/{}/key", repo_tag);
             let mut is_api_call_success = true;
-            let mut response_body       = String::new();
 
-            match utils::rest_api_call_get(&api_call) {
-                Ok(_response_body) => {
+            let response_body = match utils::rest_api_call_get(&api_call) {
+                Ok(response) => {
                     status.success(term);
-                    response_body = _response_body
+                    response
                 }
                 Err(err)           => {
                     status.error(term);
                     is_api_call_success = false;
                     return Err(format!("There was an error getting the public encryption key for {}: {}", repo_tag, err));
                 }
-            }
+            };
 
             let mut repo_response: RepoResponse = match serde_json::from_str(&response_body) {
                 Ok(response) => response,

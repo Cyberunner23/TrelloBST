@@ -26,7 +26,7 @@
 
 use std::collections::BTreeMap;
 use std::error::Error;
-use std::fs::{File, Metadata, OpenOptions};
+use std::fs::{File, OpenOptions};
 use std::io::{Read, Write};
 use std::path::PathBuf;
 
@@ -34,20 +34,12 @@ extern crate term;
 
 use serde_json::Value;
 
-use utils;
-
 
 ////////////////////////////////////////////////////////////
 //                         Macros                         //
 ////////////////////////////////////////////////////////////
 
 include!("utils_macros.rs");
-
-
-////////////////////////////////////////////////////////////
-//                        Constants                       //
-////////////////////////////////////////////////////////////
-pub static TRELLO_API_KEY: &'static str = "0e190833c4db5fd7d3b0b26ae642d6fa";
 
 
 ////////////////////////////////////////////////////////////
