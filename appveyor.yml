@@ -30,6 +30,9 @@ install:
 build_script:
   - cmd: cargo build
 
+cache:
+  - '%UserProfile%/.cargo'
+
 on_success:
   - ps: |
       Remove-item alias:curl
