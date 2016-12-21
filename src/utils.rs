@@ -217,7 +217,7 @@ pub fn rest_api_call_get(api_call: &String) -> Result<String, &'static str> {
     }
 
     if response_body == "invalid token" {
-        return Err("The app token is invalid.");
+        return Err("The api token is invalid.");
     }
 
     Ok(response_body)
@@ -253,7 +253,7 @@ pub fn rest_api_call_get_with_header(api_call: &String, header: Headers) -> Resu
     }
 
     if response_body == "invalid token" {
-        return Err("The app token is invalid.");
+        return Err("The api token is invalid.");
     }
 
     Ok(response_body)
@@ -285,7 +285,7 @@ pub fn rest_api_call_post(api_call: &String) -> Result<String, &'static str> {
     }
 
     if response_body == "invalid token" {
-        return Err("The app token is invalid.");
+        return Err("The api token is invalid.");
     }
 
     Ok(response_body)
@@ -319,7 +319,7 @@ pub fn rest_api_call_post_with_header(api_call: &String, header: Headers) -> Res
     }
 
     if response_body == "invalid token" {
-        return Err("The app token is invalid.");
+        return Err("The api token is invalid.");
     }
 
     Ok(response_body)
@@ -353,7 +353,7 @@ pub fn rest_api_call_put_with_header(api_call: &String, header: Headers) -> Resu
     }
 
     if response_body == "invalid token" {
-        return Err("The app token is invalid.");
+        return Err("The api token is invalid.");
     }
 
     Ok(response_body)

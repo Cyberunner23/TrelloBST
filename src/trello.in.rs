@@ -113,15 +113,15 @@ impl Trello {
 
     pub fn setup_api_token(&mut self, term: &mut Box<term::StdoutTerminal>, trello_api_key: &str, config: &mut config::TrelloBSTConfig) {
 
-        let trello_app_token_config_key = "trello_app_token";
-        let trello_app_token            = config.get(&trello_app_token_config_key);
+        let trello_api_token_config_key = "trello_api_token";
+        let trello_api_token            = config.get(&trello_api_token_config_key);
 
         //If its empty then either were not loading a config from file or its first time use.
-        if trello_app_token.is_empty() {
-            let mut app_token = String::new();
+        if trello_api_token.is_empty() {
+            let mut api_token = String::new();
             println!("Setting up Trello API Token...");
-            get_input_string!(term, &mut app_token, "Log in to Trello.com and enter the app token from https://trello.com/1/authorize?response_type=token&key={}&scope=read%2Cwrite&expiration=never&name=TrelloBST : ", trello_api_key);
-            config.set(&trello_app_token_config_key, &app_token);
+            get_input_string!(term, &mut api_token, "Log in to Trello.com and enter the app token from https://trello.com/1/authorize?response_type=token&key={}&scope=read%2Cwrite&expiration=never&name=TrelloBST : ", trello_api_key);
+            config.set(&trello_api_token_config_key, &api_token);
 
             //Save config
             let status = utils::StatusPrint::from_str(term, "Saving configuration file...");
@@ -139,8 +139,8 @@ impl Trello {
 
         //Get list of boards
         let     status                      = utils::StatusPrint::from_str(term, "Acquiring board list from Trello.");
-        let     trello_app_token_config_key = "trello_app_token";
-        let mut api_call                    = format!("https://api.trello.com/1/members/me?fields=&boards=open&board_fields=name&key={}&token={}", trello_api_key, config.get(trello_app_token_config_key));
+        let     trello_api_token_config_key = "trello_api_token";
+        let mut api_call                    = format!("https://api.trello.com/1/members/me?fields=&boards=open&board_fields=name&key={}&token={}", trello_api_key, config.get(trello_api_token_config_key));
 
         //  Do API call
         let mut response_body = match utils::rest_api_call_get(&api_call) {
@@ -198,7 +198,7 @@ impl Trello {
 
             //Create board
             let     status        = utils::StatusPrint::from_str(term, "Creating new board.");
-            let     api_call      = format!("https://trello.com/1/boards?name={}&defaultLists=false&key={}&token={}", board_name, trello_api_key, config.get(trello_app_token_config_key));
+            let     api_call      = format!("https://trello.com/1/boards?name={}&defaultLists=false&key={}&token={}", board_name, trello_api_key, config.get(trello_api_token_config_key));
             let mut response_body = String::new();
 
             //  Do API call
@@ -227,13 +227,13 @@ impl Trello {
     pub fn setup_list(&mut self, term: &mut Box<term::StdoutTerminal>, trello_api_key: &str, config: &mut config::TrelloBSTConfig) -> Result<(), &'static str> {
 
         //Acquire board list and select a list if board wasnt just created
-        let     trello_app_token_config_key = "trello_app_token";
+        let     trello_api_token_config_key = "trello_api_token";
         let mut create_list                 = false;
         if !self.is_board_created {
 
             //Acquire board list
             let     status           = utils::StatusPrint::from_str(term, "Acquiring board's lists list from Trello.");
-            let     api_call         = format!("https://api.trello.com/1/boards/{}?lists=open&list_fields=name&fields=name,desc&key={}&token={}", config.get("trello_board_id"), trello_api_key, config.get(trello_app_token_config_key));
+            let     api_call         = format!("https://api.trello.com/1/boards/{}?lists=open&list_fields=name&fields=name,desc&key={}&token={}", config.get("trello_board_id"), trello_api_key, config.get(trello_api_token_config_key));
 
             let mut response_body = match utils::rest_api_call_get(&api_call) {
                 Ok(response_body) => response_body,
@@ -285,8 +285,8 @@ impl Trello {
                 if is_input_success {break;}
             }
 
-            let     trello_app_token_config_key = "trello_app_token";
-            let     api_call                    = format!("https://trello.com/1/lists?name={}&idBoard={}&defaultLists=false&key={}&token={}", list_name, config.get("trello_board_id"), trello_api_key, config.get(trello_app_token_config_key));
+            let     trello_api_token_config_key = "trello_api_token";
+            let     api_call                    = format!("https://trello.com/1/lists?name={}&idBoard={}&defaultLists=false&key={}&token={}", list_name, config.get("trello_board_id"), trello_api_key, config.get(trello_api_token_config_key));
             let     status                      = utils::StatusPrint::from_str(term, "Creating the list.");
 
             let mut response_body = match utils::rest_api_call_post(&api_call) {
@@ -315,11 +315,11 @@ impl Trello {
 
 
         //Acquire board labels and select ones to be used if board was not just created.
-        let     trello_app_token_config_key = "trello_app_token";
+        let     trello_api_token_config_key = "trello_api_token";
         if !self.is_board_created {
 
             //Acquire label list
-            let     api_call         = format!("https://api.trello.com/1/boards/{}?labels=all&label_fields=name,color&fields=none&key={}&token={}", config.get("trello_board_id"), trello_api_key, config.get(trello_app_token_config_key));
+            let     api_call         = format!("https://api.trello.com/1/boards/{}?labels=all&label_fields=name,color&fields=none&key={}&token={}", config.get("trello_board_id"), trello_api_key, config.get(trello_api_token_config_key));
             let mut board_label_list = BoardsLabelsResponse::new();
             let     status           = utils::StatusPrint::from_str(term, "Acquiring board's labels from Trello.");
 
@@ -426,8 +426,8 @@ impl Trello {
         }
 
         //Create label.
-        let trello_app_token_config_key = "trello_app_token";
-        let api_call                    = format!("https://trello.com/1/board/{}/labels?name={}&color={}&key={}&token={}", config.get("trello_board_id"), label_name, label_color, trello_api_key, config.get(trello_app_token_config_key));
+        let trello_api_token_config_key = "trello_api_token";
+        let api_call                    = format!("https://trello.com/1/board/{}/labels?name={}&color={}&key={}&token={}", config.get("trello_board_id"), label_name, label_color, trello_api_key, config.get(trello_api_token_config_key));
         let status                      = utils::StatusPrint::from_str(term, "Creating the label.");
 
         let mut response_body = match utils::rest_api_call_post(&api_call) {

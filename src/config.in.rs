@@ -60,13 +60,6 @@ pub struct TrelloBSTConfig {
     pub config_mode: Option<PathBuf>
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct TrelloBSTAPIConfig {
-    pub trello_app_token:    String,
-    pub travis_access_token: String,
-    pub appveyor_api_token:  String,
-}
-
 
 ////////////////////////////////////////////////////////////
 //                         Impls                          //
@@ -213,72 +206,6 @@ impl TrelloBSTConfig {
         } else {
             self.key_val_map.insert(key.to_string(), String::new());
             return String::new();
-        }
-    }
-}
-
-
-
-
-//Deprecated...
-impl TrelloBSTAPIConfig {
-
-    pub fn new() -> TrelloBSTAPIConfig {
-        TrelloBSTAPIConfig {
-            trello_app_token:    String::new(),
-            travis_access_token: String::new(),
-            appveyor_api_token:  String::new(),
-        }
-    }
-
-    pub fn from_file(config_file_path: &PathBuf) -> Result<TrelloBSTAPIConfig, &'static str>{
-
-        let mut file = match File::open(config_file_path.as_path()) {
-            Ok(file) => file,
-            Err(_)   => {
-                return Err("Cannot open config file for parsing, configuration file won't be used...");
-            }
-        };
-
-        let metadata = match file.metadata() {
-            Ok(metadata)  => metadata,
-            Err(_)        => {
-                return Err("Cannot gather metadata of the configuration file, configuration file won't be used...")
-            }
-        };
-
-        let api_config         = TrelloBSTAPIConfig::new();
-        let file_length: usize = metadata.len() as usize;
-        if file_length == 0 {
-            return Ok(api_config)
-        } else {
-            let mut data: String = String::with_capacity(file_length +1);
-            match file.read_to_string(&mut data) {
-                Ok(_)  => {
-                    //TODO: better error checking
-                    return Ok(serde_json::from_str(&data[..]).unwrap())
-                },
-                Err(_) => {
-                    return Err("Error while reading the configuration file, configuration file won't be used...")
-                }
-            }
-        }
-    }
-
-    pub fn save_config(config_file_path: &PathBuf, config: &TrelloBSTAPIConfig) -> Result<(), &'static str> {
-        match File::create(config_file_path.as_path()) {
-            Ok(file)  => {
-                //TODO: better error reporting
-                let     config_json = serde_json::to_string(&config).unwrap();
-                let mut config_file = file;
-                match config_file.write(&config_json.into_bytes()[..]) {
-                    Ok(_)  => Ok(()),
-                    Err(_) => Err("Error while saving the configuration file...")
-                }
-            }
-            Err(_)    => {
-                Err("Cannot open configuration for saving...")
-            }
         }
     }
 }

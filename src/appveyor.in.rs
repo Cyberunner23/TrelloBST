@@ -106,7 +106,7 @@ pub struct GithubResponse {
 }
 
 pub struct AppVeyorEncryptedVars {
-    pub trello_app_token: String,
+    pub trello_api_token: String,
     pub list_id:          String,
     pub build_pass_id:    String,
     pub build_fail_id:    String
@@ -244,7 +244,7 @@ impl CITrait for AppVeyor {
         //Generate File
         let mut file_data = include_str!("templates/appveyor").to_string();;
 
-        file_data = file_data.replace("<TRELLO_API_TOKEN>",         &encrypted_vars.trello_app_token[..]);
+        file_data = file_data.replace("<TRELLO_API_TOKEN>",         &encrypted_vars.trello_api_token[..]);
         file_data = file_data.replace("<TRELLO_API_LIST_ID>",       &encrypted_vars.list_id[..]);
         file_data = file_data.replace("<TRELLO_API_BUILD_PASS_ID>", &encrypted_vars.build_pass_id[..]);
         file_data = file_data.replace("<TRELLO_API_BUILD_FAIL_ID>", &encrypted_vars.build_fail_id[..]);
@@ -298,7 +298,7 @@ impl AppVeyor {
 
     pub fn encrypt_vars(&mut self, config: &mut config::TrelloBSTConfig) -> Result<AppVeyorEncryptedVars, String> {
         Ok(AppVeyorEncryptedVars{
-            trello_app_token: try!(self.appveyor_encrypt_var(config, "trello_api_token")),
+            trello_api_token: try!(self.appveyor_encrypt_var(config, "trello_api_token")),
             list_id:          try!(self.appveyor_encrypt_var(config, "trello_list_id")),
             build_pass_id:    try!(self.appveyor_encrypt_var(config, "trello_label_pass_id")),
             build_fail_id:    try!(self.appveyor_encrypt_var(config, "trello_label_fail_id"))

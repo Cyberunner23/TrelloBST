@@ -65,7 +65,7 @@ include!("utils_macros.rs");
 ////////////////////////////////////////////////////////////
 
 pub struct TravisEncryptedVars {
-    pub trello_app_token: String,
+    pub trello_api_token: String,
     pub list_id:          String,
     pub build_pass_id:    String,
     pub build_fail_id:    String
@@ -243,7 +243,7 @@ impl CITrait for TravisCI{
         //Generate
         let mut file_data = include_str!("templates/travis-ci").to_string();
 
-        file_data = file_data.replace("<TRELLO_API_TOKEN>",         &encrypted_vars.trello_app_token[..]);
+        file_data = file_data.replace("<TRELLO_API_TOKEN>",         &encrypted_vars.trello_api_token[..]);
         file_data = file_data.replace("<TRELLO_API_LIST_ID>",       &encrypted_vars.list_id[..]);
         file_data = file_data.replace("<TRELLO_API_BUILD_PASS_ID>", &encrypted_vars.build_pass_id[..]);
         file_data = file_data.replace("<TRELLO_API_BUILD_FAIL_ID>", &encrypted_vars.build_fail_id[..]);
@@ -385,20 +385,20 @@ impl TravisCI{
     pub fn encrypt_vars(&mut self, config: &mut config::TrelloBSTConfig, crypto_state: &mut PKey) -> TravisEncryptedVars{
 
         //Get config values
-        let trello_app_token = config.get("trello_app_token");
+        let trello_api_token = config.get("trello_api_token");
         let list_id          = config.get("trello_list_id");
         let build_pass_id    = config.get("trello_label_pass_id");
         let build_fail_id    = config.get("trello_label_fail_id");
 
         //Create environment variables
-        let trello_app_token_env_var = format!("TRELLO_API_TOKEN={}",         trello_app_token);
+        let trello_api_token_env_var = format!("TRELLO_API_TOKEN={}",         trello_api_token);
         let list_id_env_var          = format!("TRELLO_API_LIST_ID={}",       list_id);
         let build_pass_id_env_var    = format!("TRELLO_API_BUILD_PASS_ID={}", build_pass_id);
         let build_fail_id_env_var    = format!("TRELLO_API_BUILD_FAIL_ID={}", build_fail_id);
 
         //Encrypt environment variables
         TravisEncryptedVars {
-            trello_app_token: crypto_state.public_encrypt_with_padding(&trello_app_token_env_var.into_bytes(), EncryptionPadding::PKCS1v15).to_base64(base64::STANDARD),
+            trello_api_token: crypto_state.public_encrypt_with_padding(&trello_api_token_env_var.into_bytes(), EncryptionPadding::PKCS1v15).to_base64(base64::STANDARD),
             list_id:          crypto_state.public_encrypt_with_padding(&list_id_env_var.into_bytes(),          EncryptionPadding::PKCS1v15).to_base64(base64::STANDARD),
             build_pass_id:    crypto_state.public_encrypt_with_padding(&build_pass_id_env_var.into_bytes(),    EncryptionPadding::PKCS1v15).to_base64(base64::STANDARD),
             build_fail_id:    crypto_state.public_encrypt_with_padding(&build_fail_id_env_var.into_bytes(),    EncryptionPadding::PKCS1v15).to_base64(base64::STANDARD)
