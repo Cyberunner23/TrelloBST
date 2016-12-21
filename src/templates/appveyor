@@ -22,17 +22,17 @@ install:
         &'7z' e -y .\AppVeyor-win-stable.zip * > $null
         Move-Item "$($env:APPVEYOR_BUILD_FOLDER)\TrelloBST.exe" $($env:TRELLOBST_DIR) > $null
 
-  on_success:
-    - ps: Remove-item alias:curl
-    - ps: cd $($env:BUILD_DIRECTORY)
-    - ps: 7z a -r build.zip .\ > $null
-    - ps: $BUILD_LINK         = [string](curl --silent --upload-file .\build.zip https://transfer.sh/build.zip)
-    - ps: '$TRELLO_CARD_TITLE = "[$($env:APPVEYOR_REPO_BRANCH)][AppVeyor][Windows][$($env:COMPILER)]: #$($env:APPVEYOR_BUILD_NUMBER) PASSED"'
-    - ps: '$TRELLO_CARD_DESC  = "[Build]\: $($BUILD_LINK)`n[Logs]\:https://ci.appveyor.com/project/$($env:APPVEYOR_REPO_NAME)/build/$($env:APPVEYOR_BUILD_VERSION)/job/$($env:APPVEYOR_JOB_ID)"'
-    - ps: '&"$($env:TRELLOBST_EXEC)" push --pass --title "$($TRELLO_CARD_TITLE)" --description "$($TRELLO_CARD_DESC)"'
+on_success:
+  - ps: Remove-item alias:curl
+  - ps: cd $($env:BUILD_DIRECTORY)
+  - ps: 7z a -r build.zip .\ > $null
+  - ps: $BUILD_LINK         = [string](curl --silent --upload-file .\build.zip https://transfer.sh/build.zip)
+  - ps: '$TRELLO_CARD_TITLE = "[$($env:APPVEYOR_REPO_BRANCH)][AppVeyor][Windows][$($env:COMPILER)]: #$($env:APPVEYOR_BUILD_NUMBER) PASSED"'
+  - ps: '$TRELLO_CARD_DESC  = "[Build]\: $($BUILD_LINK)`n[Logs]\:https://ci.appveyor.com/project/$($env:APPVEYOR_REPO_NAME)/build/$($env:APPVEYOR_BUILD_VERSION)/job/$($env:APPVEYOR_JOB_ID)"'
+  - ps: '&"$($env:TRELLOBST_EXEC)" push --pass --title "$($TRELLO_CARD_TITLE)" --description "$($TRELLO_CARD_DESC)"'
 
-  on_failure:
-    - ps: Remove-item alias:curl
-    - ps: '$TRELLO_CARD_TITLE = "[$($env:APPVEYOR_REPO_BRANCH)][AppVeyor][Windows][$($env:COMPILER)]: #$($env:APPVEYOR_BUILD_NUMBER) PASSED"'
-    - ps: $TRELLO_CARD_DESC   = "[Logs]\:https://ci.appveyor.com/project/$($env:APPVEYOR_REPO_NAME)/build/$($env:APPVEYOR_BUILD_VERSION)/job/$($env:APPVEYOR_JOB_ID)"
-    - ps: '&"$($env:TRELLOBST_EXEC)" push --fail --title "$($TRELLO_CARD_TITLE)" --description "$($TRELLO_CARD_DESC)"'
+on_failure:
+  - ps: Remove-item alias:curl
+  - ps: '$TRELLO_CARD_TITLE = "[$($env:APPVEYOR_REPO_BRANCH)][AppVeyor][Windows][$($env:COMPILER)]: #$($env:APPVEYOR_BUILD_NUMBER) PASSED"'
+  - ps: $TRELLO_CARD_DESC   = "[Logs]\:https://ci.appveyor.com/project/$($env:APPVEYOR_REPO_NAME)/build/$($env:APPVEYOR_BUILD_VERSION)/job/$($env:APPVEYOR_JOB_ID)"
+  - ps: '&"$($env:TRELLOBST_EXEC)" push --fail --title "$($TRELLO_CARD_TITLE)" --description "$($TRELLO_CARD_DESC)"'
