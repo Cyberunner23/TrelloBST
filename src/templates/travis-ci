@@ -9,7 +9,7 @@ script:
 
 env:
   global:
-    - BUILD_DIRECTORY=./
+    - BUILD_DIRECTORY=*
     - TRELLOBST_DIR=${HOME}/.TrelloBST
     - TRELLOBST_EXEC=${TRELLOBST_DIR}/TrelloBST-${TRAVIS_OS_NAME}
     - secure: <TRELLO_API_TOKEN>
