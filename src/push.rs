@@ -137,12 +137,8 @@ pub fn push(api_key: String, is_pass: bool, push_data: PushConfig) -> Result<(),
         label = push_data.trello_api_build_fail_id;
     }
 
-    //Having straight up [] in the description makes it dissapear for some reason.
-    let mut card_desc = push_data.card_desc.replace("[", "\\[");
-            card_desc = push_data.card_desc.replace("]", "\\]");
-            card_desc = percent_encoding::percent_encode(push_data.card_desc.as_bytes(),  percent_encoding::USERINFO_ENCODE_SET).collect();
-
-    let mut card_title: String = percent_encoding::percent_encode(push_data.card_title.as_bytes(), percent_encoding::USERINFO_ENCODE_SET).collect();
+    let card_title: String = percent_encoding::percent_encode(push_data.card_title.as_bytes(), percent_encoding::USERINFO_ENCODE_SET).collect();
+    let card_desc:  String = percent_encoding::percent_encode(push_data.card_desc.as_bytes(),  percent_encoding::USERINFO_ENCODE_SET).collect();
 
     let api_call = format!("https://api.trello.com/1/cards?key={}&token={}&idList={}&name={}&desc={}&idLabels={}&due=null&pos=top",
                            api_key,
