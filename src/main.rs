@@ -123,7 +123,7 @@ pub fn dir_path_validator(dir_path: String) -> Result<(), String> {
 
 fn main() {
 
-    let     trellobst_version = "2.0.0-dev";
+    let     trellobst_version = "2.0.0";
     //NOTE: Public developer key
     let     trello_api_key = "0e190833c4db5fd7d3b0b26ae642d6fa";
     let mut term              = term::stdout().unwrap();

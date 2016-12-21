@@ -1,6 +1,6 @@
 [package]
 name        = "TrelloBST"
-version     = "2.0.0-dev"
+version     = "2.0.0"
 authors     = ["Cyberunner23 <https://github.com/Cyberunner23>"]
 description = "Trello Build Status Tool, A tool for setting up a trello page receiving build statuses from Travis-CI and Appveyor."
 build       = "build.rs"
