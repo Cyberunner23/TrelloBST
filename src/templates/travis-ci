@@ -1,11 +1,11 @@
-language:
+language: cpp
 sudo: false
 os:
   - linux
+  - osx
 
 install:
 script:
-
 
 env:
   global:
@@ -17,15 +17,10 @@ env:
     - secure: <TRELLO_API_BUILD_PASS_ID>
     - secure: <TRELLO_API_BUILD_FAIL_ID>
 
-cache:
-  directories:
-  - ${TRELLOBST_DIR}
-
 before_install:
-  - if [ ! -f ${TRELLOBST_DIR}/TrelloBST-${TRAVIS_OS_NAME} ]; then
-           wget https://github.com/Cyberunner23/TrelloBST/releases/download/v2.0.0-pre1/Travis-${TRAVIS_OS_NAME}-stable.tar.gz
-        && tar -xvf Travis-${TRAVIS_OS_NAME}-stable.tar.gz -C ${TRELLOBST_DIR};
-    fi
+  - wget -q https://github.com/Cyberunner23/TrelloBST/releases/download/v2.0.0-pre1/Travis-${TRAVIS_OS_NAME}-stable.tar.gz
+  - mkdir ${TRELLOBST_DIR}
+  - tar -xvf Travis-${TRAVIS_OS_NAME}-stable.tar.gz -C ${TRELLOBST_DIR}
 
 after_success:
   - 'if [ ${TRAVIS_SECURE_ENV_VARS} = true ] ; then
