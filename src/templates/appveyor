@@ -31,7 +31,7 @@ on_success:
       7z a -r build.zip ./
       $BUILD_LINK        = [string](curl --silent --upload-file .\\build.zip https://transfer.sh/build.zip)
       $TRELLO_CARD_TITLE = "[$($env:APPVEYOR_REPO_BRANCH)][AppVeyor][Windows][$($env:COMPILER)]: #$($env:APPVEYOR_BUILD_NUMBER) PASSED"
-      $TRELLO_CARD_DESC  = "[Build]: $($BUILD_LINK) \n[Logs]:https://ci.appveyor.com/project/$($env:APPVEYOR_REPO_NAME)/build/$($env:APPVEYOR_BUILD_VERSION)/job/$($env:APPVEYOR_JOB_ID)"
+      $TRELLO_CARD_DESC  = "[Build]: $($BUILD_LINK)`n[Logs]:https://ci.appveyor.com/project/$($env:APPVEYOR_REPO_NAME)/build/$($env:APPVEYOR_BUILD_VERSION)/job/$($env:APPVEYOR_JOB_ID)"
       $($env:TRELLOBST_DIR)/TrelloBST.exe push --pass --title $($TRELLO_CARD_TITLE) --description $($TRELLO_CARD_DESC)'
 
 on_failure:
